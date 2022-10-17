@@ -740,7 +740,13 @@ class EvalResult:
     json_encoder.item_separator = ','
     json_encoder.key_separator = ':'
     return json_encoder.encode(json_dict)
-  
+
+  def to_dict(self):
+    d = {}
+    d['score'] = self.get_score()
+    d['message'] = self.get_message()
+    return d
+
 class TestSuite:
 
   def __init__(self):
@@ -1139,7 +1145,7 @@ def __init_test_suite_with_source_code(options, eval_result):
       logging.info("decompress source code done")
   elif options.code_type == 'git':
     result = git_clone(options.git_repo, options.git_branch, options.git_repo_prefix, 
-                        options.git_user, options.git_token, proj_path, 10, eval_result)
+                        options.git_user, options.git_token, proj_path, 1000, eval_result)
     if not result:
       return None
 
@@ -1376,7 +1382,7 @@ def run(options):
     eval_result.set_no_cost()
     eval_result.clear_score()
 
-  return result, eval_result.to_json_string()
+  return result, eval_result.to_dict()
 
 if __name__ == '__main__':
   os.setpgrp()
@@ -1388,6 +1394,7 @@ if __name__ == '__main__':
   if result is False:
     exit_code = 1
   else:
-    logging.info(evaluation)
+    print('score: ', evaluation['score'])
+    print(evaluation['message'])
   exit(exit_code)
 
