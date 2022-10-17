@@ -46,8 +46,7 @@ void yyerror(yyscan_t scanner, const char *str)
   context->from_length = 0;
   context->select_length = 0;
   context->value_length = 0;
-  memset(context->ssql->sstr.insertion.value_num,0,sizeof(context->ssql->sstr.insertion.value_num));
-  context->ssql->sstr.insertion.insert_num=0;
+  context->ssql->sstr.insertion.value_num = 0;
   printf("parse sql failed. error=%s", str);
 }
 
@@ -133,7 +132,7 @@ ParserContext *get_context(yyscan_t scanner)
 
 %%
 
-commands: %empty 		//commands or sqls. parser starts here.
+commands:		//commands or sqls. parser starts here.
     /* empty */
     | commands command
     ;
@@ -236,7 +235,7 @@ create_table:		/*create table 语句的语法解析树*/
 			CONTEXT->value_length = 0;
 		}
     ;
-attr_def_list: %empty 
+attr_def_list:
     /* empty */
     | COMMA attr_def attr_def_list {    }
     ;
@@ -286,16 +285,16 @@ insert:				/*insert   语句的语法解析树*/
 			CONTEXT->value_length=0;
 			CONTEXT->insert_num=0;
          }
-value_def_list: %empty 
+value_def_list:
   /* empty */ 
   | COMMA value_def value_def_list{
   };
 
 value_def:
-  LBRACE insert_value value_list RBRACE{
+  LBRACE value value_list RBRACE{
 	CONTEXT->insert_num++;
   };
-value_list: %empty 
+value_list:
     /* empty */
     | COMMA insert_value value_list  {
 	  }
@@ -382,7 +381,7 @@ select_attr:
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
 		}
     ;
-attr_list: %empty 
+attr_list:
     /* empty */
     | COMMA ID attr_list {
 			RelAttr attr;
@@ -400,18 +399,18 @@ attr_list: %empty
   	  }
   	;
 
-rel_list: %empty 
+rel_list:
     /* empty */
     | COMMA ID rel_list {	
 				selects_append_relation(&CONTEXT->ssql->sstr.selection, $2);
 		  }
     ;
-where: %empty 
+where:
     /* empty */ 
     | WHERE condition condition_list {	
 			}
     ;
-condition_list: %empty 
+condition_list:
     /* empty */
     | AND condition condition_list {
 			}

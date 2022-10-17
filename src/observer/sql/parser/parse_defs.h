@@ -16,7 +16,6 @@ See the Mulan PSL v2 for more details. */
 #define __OBSERVER_SQL_PARSER_PARSE_DEFS_H__
 
 #include <stddef.h>
-
 #define MAX_NUM 20
 #define MAX_REL_NAME 20
 #define MAX_ATTR_NAME 20
@@ -79,8 +78,9 @@ typedef struct {
 // struct of insert
 typedef struct {
   char *relation_name;    // Relation to insert into
-  size_t value_num;       // Length of values
-  Value values[MAX_NUM];  // values to insert
+  size_t insert_num;
+  size_t value_num[MAX_NUM];       // Length of values
+  Value values[MAX_NUM][MAX_NUM];  // values to insert
 } Inserts;
 
 // struct of delete
@@ -205,7 +205,7 @@ void selects_append_relation(Selects *selects, const char *relation_name);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
 void selects_destroy(Selects *selects);
 
-void inserts_init(Inserts *inserts, const char *relation_name, Value values[], size_t value_num);
+void inserts_init(Inserts *inserts, const char *relation_name, Value values[MAX_NUM][MAX_NUM], size_t value_num[MAX_NUM], size_t insert_num);
 void inserts_destroy(Inserts *inserts);
 
 void deletes_init_relation(Deletes *deletes, const char *relation_name);
