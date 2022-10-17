@@ -156,6 +156,7 @@ command:
 	| load_data
 	| help
 	| exit
+	| show_index
     ;
 
 exit:			
@@ -511,6 +512,14 @@ load_data:
 		{
 		  CONTEXT->ssql->flag = SCF_LOAD_DATA;
 			load_data_init(&CONTEXT->ssql->sstr.load_data, $7, $4);
+		}
+		;
+
+show_index:
+        SHOW INDEX FROM ID SEMICOLON
+		{
+			CONTEXT->ssql->flag = SCF_SHOW_INDEX;
+			show_index_init(&CONTEXT->ssql->sstr.show_index, $4);
 		}
 		;
 %%

@@ -172,6 +172,9 @@ void ExecuteStage::handle_request(common::StageEvent *event)
     case SCF_DESC_TABLE: {
       do_desc_table(sql_event);
     } break;
+    case SCF_SHOW_INDEX: {
+      do_show_index(sql_event);
+    } break;
 
     case SCF_DROP_INDEX:
     case SCF_LOAD_DATA: {
@@ -525,6 +528,28 @@ RC ExecuteStage::do_show_tables(SQLStageEvent *sql_event)
     }
     session_event->set_response(ss.str().c_str());
   }
+  return RC::SUCCESS;
+}
+
+RC ExecuteStage::do_show_index(SQLStageEvent *sql_event)
+{
+  SessionEvent *session_event = sql_event->session_event();
+  Table *tb = session_event->session()->get_current_db()->find_table(sql_event->query()->sstr.show_index.relation_name);
+  const TableMeta tb_meta = tb->table_meta();
+  std::stringstream ss;
+  ss << "Table | Non_unique | Key_name | Seq_in_index | Column_name" << std::endl;
+  for (int i = 0; i < tb_meta.index_num(); i++) {
+    const IndexMeta *index_meta = tb_meta.index(i);
+    ss << tb->name();
+    ss << " | ";
+    ss << "1 | ";
+    ss << index_meta->name();
+    ss << " | 1";
+    ss << " | ";
+    ss << index_meta->field();
+    ss << std::endl;
+  }
+  session_event->set_response(ss.str().c_str());
   return RC::SUCCESS;
 }
 

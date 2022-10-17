@@ -138,6 +138,10 @@ typedef struct {
   const char *file_name;
 } LoadData;
 
+typedef struct {
+  const char *relation_name;
+} ShowIndex;
+
 union Queries {
   Selects selection;
   Inserts insertion;
@@ -149,6 +153,7 @@ union Queries {
   DropIndex drop_index;
   DescTable desc_table;
   LoadData load_data;
+  ShowIndex show_index;
   char *errors;
 };
 
@@ -172,7 +177,8 @@ enum SqlCommandFlag {
   SCF_ROLLBACK,
   SCF_LOAD_DATA,
   SCF_HELP,
-  SCF_EXIT
+  SCF_EXIT,
+  SCF_SHOW_INDEX
 };
 // struct of flag and sql_struct
 typedef struct Query {
@@ -235,6 +241,9 @@ void desc_table_destroy(DescTable *desc_table);
 
 void load_data_init(LoadData *load_data, const char *relation_name, const char *file_name);
 void load_data_destroy(LoadData *load_data);
+
+void show_index_init(ShowIndex *show_index, const char *relation_name);
+void relation_attr_destroy(RelAttr *relation_attr);
 
 void query_init(Query *query);
 Query *query_create();  // create and init
