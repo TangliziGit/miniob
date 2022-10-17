@@ -78,11 +78,12 @@ RC Trx::insert_record(Table *table, Record *record)
   RC rc = RC::SUCCESS;
   // 先校验是否以前是否存在过(应该不会存在)
   Operation *old_oper = find_operation(table, record->rid());
+  // todo:如果是删表后再插入,那么就有可能存在。
   if (old_oper != nullptr) {
     if (old_oper->type() == Operation::Type::DELETE) {
       delete_operation(table, record->rid());
     } else {
-      return RC::GENERIC_ERROR;
+      // return RC::GENERIC_ERROR;
     }
   }
 

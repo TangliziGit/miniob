@@ -120,6 +120,35 @@ RC Table::create(
   return rc;
 }
 
+RC Table::remove(
+    const char *path, const char *name, const char *base_dir){
+  if (common::is_blank(name)) {
+    LOG_WARN("Name cannot be empty");
+    return RC::INVALID_ARGUMENT;
+  }
+  LOG_INFO("Begin to remove table %s:%s", base_dir, name);
+
+  RC rc = RC::SUCCESS;
+  for(auto index:indexes_){
+    reinterpret_cast<BplusTreeIndex *>(index)->close();
+    ::remove(table_index_file(base_dir,name,index->index_meta().name()).c_str());
+  }
+  
+  std::string data_file = table_data_file(base_dir, name);
+  BufferPoolManager &bpm = BufferPoolManager::instance();
+  rc = bpm.close_file(data_file.c_str());
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to remove disk buffer pool of data file. file name=%s", data_file.c_str());
+    return rc;
+  }
+  ::remove(data_file.c_str());
+  LOG_INFO("Successfully remove table %s:%s", base_dir, name);
+    // 删除文件
+
+  ::remove(path);
+  return rc;
+}
+
 RC Table::open(const char *meta_file, const char *base_dir, CLogManager *clog_manager)
 {
   // 加载元数据文件
