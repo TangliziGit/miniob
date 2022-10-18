@@ -536,6 +536,10 @@ RC ExecuteStage::do_show_index(SQLStageEvent *sql_event)
 {
   SessionEvent *session_event = sql_event->session_event();
   Table *tb = session_event->session()->get_current_db()->find_table(sql_event->query()->sstr.show_index.relation_name);
+  if (tb == nullptr) {
+    session_event->set_response("FAILURE\n");
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
   const TableMeta tb_meta = tb->table_meta();
   std::stringstream ss;
   ss << "Table | Non_unique | Key_name | Seq_in_index | Column_name" << std::endl;
