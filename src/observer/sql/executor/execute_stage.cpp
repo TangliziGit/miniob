@@ -590,6 +590,10 @@ RC ExecuteStage::do_insert(SQLStageEvent *sql_event)
   for (int i = 0; i < n; i++) {
     rc = table->insert_record(trx, insert_stmt->value_amount(i), insert_stmt->values(i));
     if (rc != RC::SUCCESS) {
+      if(trx!=nullptr){
+        /* 回滚之前的删除 */
+        trx->rollback();
+      }
       session_event->set_response("FAILURE\n");
       return rc;
     }
