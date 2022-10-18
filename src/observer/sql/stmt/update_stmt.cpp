@@ -36,6 +36,12 @@ RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
 
+  const FieldMeta *attr_meta = table->table_meta().field(update.attribute_name);
+  if (attr_meta == nullptr) {
+    LOG_WARN("no such attribute name field. db=%s, table_name=%s, attribute_name=%s", db->name(), table_name, update.attribute_name);
+    return RC::SCHEMA_FIELD_NOT_EXIST;
+  }
+
   std::unordered_map<std::string, Table *> table_map;
   table_map.insert(std::pair<std::string, Table *>(std::string(table_name), table));
 
