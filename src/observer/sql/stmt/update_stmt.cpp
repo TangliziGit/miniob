@@ -42,6 +42,11 @@ RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
     return RC::SCHEMA_FIELD_NOT_EXIST;
   }
 
+  if (attr_meta->type() != update.value.type) {
+    LOG_WARN("attribute field type mismatched. db=%s, table_name=%s, attribute_name=%s", db->name(), table_name, update.attribute_name);
+    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+  }
+
   std::unordered_map<std::string, Table *> table_map;
   table_map.insert(std::pair<std::string, Table *>(std::string(table_name), table));
 
