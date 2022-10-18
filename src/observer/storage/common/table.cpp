@@ -667,10 +667,86 @@ RC Table::create_index(Trx *trx, const char *index_name, const char *attribute_n
   return rc;
 }
 
-RC Table::update_record(Trx *trx, const char *attribute_name, const Value *value, int condition_num,
-    const Condition conditions[], int *updated_count)
+class RecordUpdater {
+public:
+  RecordUpdater(Table &table,
+                Trx *trx,
+                const char *attribute_name,
+                const Value *value)
+      : table_(table), trx_(trx), attribute_name_(attribute_name), value_(value) {}
+
+  RC update_record(Record *record)
+  {
+    RC rc = table_.update_record(trx_, record, attribute_name_, value_);
+    if (rc == RC::SUCCESS) {
+      updated_count_++;
+    }
+    return rc;
+  }
+
+  int updated_count() const {
+    return updated_count_;
+  }
+
+private:
+  Table &table_;
+  Trx *trx_;
+
+  const char *attribute_name_;
+  const Value *value_;
+  int updated_count_ = 0;
+};
+
+static RC record_reader_update_adapter(Record *record, void *context)
 {
-  return RC::GENERIC_ERROR;
+  RecordUpdater &updater = *(RecordUpdater *)context;
+  return updater.update_record(record);
+}
+
+RC Table::update_record(Trx *trx, const char *attribute_name, const Value *value, ConditionFilter &filter, int *updated_count)
+{
+  RecordUpdater updater(*this, trx, attribute_name, value);
+  RC rc = scan_record(trx, &filter, -1, &updater, record_reader_update_adapter);
+  if (updated_count != nullptr) {
+    *updated_count = updater.updated_count();
+  }
+  return rc;
+}
+
+RC Table::update_record(Trx *trx, Record *record, const char *attribute_name, const Value *value) {
+  const FieldMeta *meta = table_meta_.field(attribute_name);
+  RC rc = RC::SUCCESS;
+
+  if (meta == nullptr) {
+    rc = RC::SCHEMA_FIELD_MISSING;
+    LOG_ERROR("Failed to update record (rid=%d.%d). rc=%d:%s",
+              record->rid().page_num, record->rid().slot_num, rc, strrc(rc));
+    return rc;
+  }
+
+  memmove(record->data() + meta->offset(), value->data, meta->len());
+
+  if (trx == nullptr) {
+    rc = record_handler_->update_record(record);
+  } else {
+    rc = trx->update_record(this, record);
+  }
+  return rc;
+}
+
+RC Table::commit_update(Trx *trx, const RID &rid)
+{
+  Record record;
+  RC rc = record_handler_->get_record(&rid, &record);
+  if (rc != RC::SUCCESS) {
+    return rc;
+  }
+
+  rc = record_handler_->update_record(&record);
+  if (rc != RC::SUCCESS) {
+    return rc;
+  }
+  return rc;
 }
 
 class RecordDeleter {
