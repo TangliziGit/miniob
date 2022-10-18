@@ -189,6 +189,7 @@ enum RCLOGBUF {
 enum RC {
 
   SUCCESS = 0, /* Successful result */
+  DATE_ILLEGAL, /* date parse err */
   /* beginning-of-error-codes */
   GENERIC_ERROR,    /* Generic error */
   INVALID_ARGUMENT, /* Invalid argument */

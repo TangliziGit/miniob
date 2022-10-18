@@ -57,6 +57,28 @@ void value_init_string(Value *value, const char *v)
   value->type = CHARS;
   value->data = strdup(v);
 }
+bool check_date(int y,int m,int d){
+   static int mon[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    bool leap = (y%400==0 || (y%100 && y%4==0));
+    if(y==2038 && m>2){
+      return false;
+    }
+    return y >= 1970 && y<=2038
+        && (m > 0)&&(m <= 12)
+        && (d > 0)&&(d <= ((m==2 && leap)?1:0) + mon[m]);
+}
+int value_init_date(Value* value, const char* v) {
+    value->type = DATES;
+    int y,m,d;
+    sscanf(v, "%d-%d-%d", &y, &m, &d);
+    bool b = check_date(y,m,d);
+    if(!b) return -1;
+    int dv = y*10000+m*100+d;
+    value->data = malloc(sizeof(dv));
+    memcpy(value->data, &dv, sizeof(dv));
+    return 1;
+}
+
 void value_destroy(Value *value)
 {
   value->type = UNDEFINED;
@@ -418,10 +440,13 @@ extern "C" int sql_parse(const char *st, Query *sqls);
 
 RC parse(const char *st, Query *sqln)
 {
+  sqln->date_parse_err = 1;
   sql_parse(st, sqln);
 
   if (sqln->flag == SCF_ERROR)
     return SQL_SYNTAX;
-  else
-    return SUCCESS;
+  else if(sqln->date_parse_err<0){
+    return RC::DATE_ILLEGAL;
+  }
+  return SUCCESS;
 }

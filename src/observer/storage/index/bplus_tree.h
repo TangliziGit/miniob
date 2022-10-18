@@ -54,6 +54,9 @@ public:
     case CHARS: {
       return compare_string((void *)v1, attr_length_, (void *)v2, attr_length_);
     }
+    case DATES:{
+      return compare_int((void *)v1, (void *)v2);
+    }
     default:{
       LOG_ERROR("unknown attr type. %d", attr_type_);
       abort();
@@ -107,27 +110,39 @@ public:
 
   std::string operator()(const char *v) const {
     switch (attr_type_) {
-    case INTS: {
-      return std::to_string(*(int*)v);
-    }
-      break;
-    case FLOATS: {
-      return std::to_string(*(float*)v);
-    }
-    case CHARS: {
-      std::string str;
-      for (int i = 0; i < attr_length_; i++) {
-	if (v[i] == 0) {
-	  break;
-	}
-	str.push_back(v[i]);
+      case INTS: {
+        return std::to_string(*(int *)v);
+      } break;
+      case FLOATS: {
+        return std::to_string(*(float *)v);
       }
-      return str;
-    }
-    default:{
-      LOG_ERROR("unknown attr type. %d", attr_type_);
-      abort();
-    }
+      case CHARS: {
+        std::string str;
+        for (int i = 0; i < attr_length_; i++) {
+          if (v[i] == 0) {
+            break;
+          }
+          str.push_back(v[i]);
+        }
+        return str;
+      }
+      case DATES: {
+        int val = *(int *)v;
+        char buf[16] = {0};
+        std::string str;
+        snprintf(buf, sizeof(buf), "%04d-%02d-%02d", val / 10000, (val % 10000) / 100, val % 100);
+        for (int i = 0; i < 16; i++) {
+          if (buf[i] == '\0') {
+            break;
+          }
+          str.push_back(buf[i]);
+        }
+        return str;
+      }
+      default: {
+        LOG_ERROR("unknown attr type. %d", attr_type_);
+        abort();
+      }
     }
   }
 private:
