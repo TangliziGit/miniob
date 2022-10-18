@@ -724,6 +724,13 @@ RC Table::update_record(Trx *trx, Record *record, const char *attribute_name, co
     return rc;
   }
 
+  rc = delete_entry_of_indexes(record->data(), record->rid(), false);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to delete indexes of record (rid=%d.%d) during update. rc=%d:%s",
+              record->rid().page_num, record->rid().slot_num, rc, strrc(rc));
+    return rc;
+  }
+
   memmove(record->data() + meta->offset(), value->data, meta->len());
 
   if (trx == nullptr) {
@@ -731,6 +738,14 @@ RC Table::update_record(Trx *trx, Record *record, const char *attribute_name, co
   } else {
     rc = trx->update_record(this, record);
   }
+
+  rc = insert_entry_of_indexes(record->data(), record->rid());
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to update indexes of record (rid=%d.%d). rc=%d:%s",
+              record->rid().page_num, record->rid().slot_num, rc, strrc(rc));
+    return rc;
+  }
+
   return rc;
 }
 
