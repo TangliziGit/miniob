@@ -1,3 +1,5 @@
+test/case/miniob
+test/case/result_tmp
 ./deps/libevent
 ./deps/googletest
 ./deps/jsoncpp
