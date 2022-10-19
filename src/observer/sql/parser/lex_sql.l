@@ -39,6 +39,8 @@ QUOTE            [\'\"]
 [\-]?{DIGIT}+{DOT}{DIGIT}+                           yylval->floats=(float)(atof(yytext)); RETURN_TOKEN(FLOAT);
 {QUOTE}([0-9]+)\-([0-9]+)\-([0-9]+){QUOTE}    yylval->string=strdup(yytext);RETURN_TOKEN(DATE);
 
+[Nn][Oo][Tt]                                         RETURN_TOKEN(NOT);
+[Ll][Ii][Kk][Ee]                                     RETURN_TOKEN(LIKE_T);
 ";"                                                  RETURN_TOKEN(SEMICOLON);
 {DOT}                                                RETURN_TOKEN(DOT);
 "*"                                                  RETURN_TOKEN(STAR);
@@ -84,7 +86,8 @@ QUOTE            [\'\"]
 "<"                                                  RETURN_TOKEN(LT);
 ">="                                                 RETURN_TOKEN(GE);
 ">"                                                  RETURN_TOKEN(GT);
-{QUOTE}[\40\42\47A-Za-z0-9_/\.\-]*{QUOTE}            yylval->string=strdup(yytext); RETURN_TOKEN(SSS);
+
+{QUOTE}[\40\42\47A-Za-z0-9_/\.\-\%]*{QUOTE}            yylval->string=strdup(yytext); RETURN_TOKEN(SSS);
 
 .                                                    printf("Unknown character [%c]\n",yytext[0]); return yytext[0];
 %%

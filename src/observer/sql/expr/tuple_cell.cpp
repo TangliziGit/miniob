@@ -12,6 +12,7 @@ See the Mulan PSL v2 for more details. */
 // Created by WangYunlai on 2022/07/05.
 //
 
+#include <vector>
 #include "sql/expr/tuple_cell.h"
 #include "storage/common/field.h"
 #include "common/log/log.h"
@@ -75,4 +76,36 @@ int TupleCell::compare(const TupleCell &other) const
   }
   LOG_WARN("not supported");
   return -1; // TODO return rc?
+}
+
+bool TupleCell::like(const TupleCell &other) const
+{
+  if (this->attr_type_ == other.attr_type_ && this->attr_type() == CHARS) {
+    /* 默认右侧为匹配串,动态规划 */
+    const char *p1 = data_, *p2 = other.data();
+    int len1=strlen(p1), len2 = other.length();
+    std::vector<std::vector<bool>> dp(len1+1, std::vector<bool>(len2+1, false));
+    dp[0][0] = true;
+    for (int i = 1; i <= len2; i++) {
+      if(dp[0][i-1]&&(p2[i-1]=='%')){
+        dp[0][i] = true;
+      }else{
+        break;
+      }
+    }
+    for (int i = 1; i <= len1;i++){
+      for (int j = 1; j <= len2;j++){
+        if(p2[j-1]=='%'){
+          dp[i][j] = dp[i - 1][j] || dp[i - 1][j - 1];
+          continue;
+        }
+        if(p2[j-1]=='_'||p2[j-1]==p1[i-1]){
+          dp[i][j] = dp[i - 1][j - 1];
+        }
+      }
+    }
+    return dp[len1][len2];
+  }
+  LOG_WARN("like not supported");
+  return false; // TODO return rc?
 }
