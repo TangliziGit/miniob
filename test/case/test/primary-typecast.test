@@ -1,0 +1,36 @@
+-- echo initialization
+create table typecast_table (id int, name char, year float);
+insert into typecast_table values (0, 'a', 3.2);
+insert into typecast_table values (1, 'b', 12);
+insert into typecast_table values (2, '12', 2);
+insert into typecast_table values (3, '1.5', 3);
+
+-- echo 1. string to int
+select * from typecast_table where id = '1';
+
+-- echo 2. string truncate to int
+select * from typecast_table where id = '1a1';
+
+-- echo 3. string to int zero
+select * from typecast_table where id = '+1';
+
+-- echo 4. string to float
+select * from typecast_table where year = '12';
+
+-- echo 5. string truncate to float
+select * from typecast_table where year = '3.2a';
+
+-- echo 5. int to float
+select * from typecast_table where year = 12;
+
+-- echo 6. int to string
+select * from typecast_table where name = 12;
+
+-- echo 7. float to int round up
+select * from typecast_table where id = 1.4;
+
+-- echo 8. float to int round up 2
+select * from typecast_table where id = 1.5;
+
+-- echo 9. float to string
+select * from typecast_table where name = 1.5;
