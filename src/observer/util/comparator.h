@@ -17,3 +17,11 @@ See the Mulan PSL v2 for more details. */
 int compare_int(void *arg1, void *arg2);
 int compare_float(void *arg1, void *arg2);
 int compare_string(void *arg1, int arg1_max_length, void *arg2, int arg2_max_length);
+
+RC chars_to(Value *value, AttrType type);
+RC ints_to(Value *value, AttrType type);
+RC floats_to(Value *value, AttrType type);
+RC cast_to(Value *value, AttrType type);
+
+int cast_to_int(void *data, AttrType type);
+float cast_to_float(void *data, AttrType type);

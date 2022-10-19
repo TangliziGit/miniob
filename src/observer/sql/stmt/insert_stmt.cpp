@@ -16,7 +16,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/log/log.h"
 #include "storage/common/db.h"
 #include "storage/common/table.h"
-#include "sql/parser/typecast.h"
+#include "util/comparator.h"
 
 InsertStmt::InsertStmt(Table *table, const Value values[MAX_NUM][MAX_NUM], const size_t value_amount[MAX_NUM],const size_t insert_num)
   : table_ (table),insert_num_(insert_num){

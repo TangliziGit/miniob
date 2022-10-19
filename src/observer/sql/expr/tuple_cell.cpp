@@ -65,16 +65,28 @@ int TupleCell::compare(const TupleCell &other) const
       return compare_int(this->data_, other.data_);
     default: {
       LOG_WARN("unsupported type: %d", this->attr_type_);
+      return -1;
     }
     }
-  } else if (this->attr_type_ == INTS && other.attr_type_ == FLOATS) {
-    float this_data = *(int *)data_;
-    return compare_float(&this_data, other.data_);
-  } else if (this->attr_type_ == FLOATS && other.attr_type_ == INTS) {
-    float other_data = *(int *)other.data_;
-    return compare_float(data_, &other_data);
   }
-  LOG_WARN("not supported");
+
+  AttrType target_type = std::max(this->attr_type_, other.attr_type_);
+  switch (target_type) {
+    case INTS: {
+      int rhs = cast_to_int(this->data_, this->attr_type_);
+      int lhs = cast_to_int(other.data_, other.attr_type_);
+      return compare_int(&rhs, &lhs);
+    }
+    case FLOATS: {
+      float rhs = cast_to_float(this->data_, this->attr_type_);
+      float lhs = cast_to_float(other.data_, other.attr_type_);
+      return compare_float(&rhs, &lhs);
+    }
+    default: {
+      LOG_WARN("not supported");
+      break;
+    }
+  }
   return -1; // TODO return rc?
 }
 
