@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/log/log.h"
 #include "storage/common/db.h"
 #include "storage/common/table.h"
+#include "sql/parser/typecast.h"
 
 InsertStmt::InsertStmt(Table *table, const Value values[MAX_NUM][MAX_NUM], const size_t value_amount[MAX_NUM],const size_t insert_num)
   : table_ (table),insert_num_(insert_num){
@@ -41,10 +42,14 @@ RC InsertStmt::create(Db *db, const Inserts &inserts, Stmt *&stmt)
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
 
-  // check the fields number
+  // check the fields number and type cast
+  Value values[MAX_NUM][MAX_NUM];
+  memcpy(values, inserts.values, sizeof(inserts.values));
+
   int n = inserts.insert_num;
   for (int i = 0; i < n; i++) {
-    const Value *values = inserts.values[i];
+    Value *newVals = values[i];
+    const Value *vals = inserts.values[i];
     const int value_num = inserts.value_num[i];
     const TableMeta &table_meta = table->table_meta();
     const int field_num = table_meta.field_num() - table_meta.sys_field_num();
@@ -58,19 +63,17 @@ RC InsertStmt::create(Db *db, const Inserts &inserts, Stmt *&stmt)
     for (int i = 0; i < value_num; i++) {
       const FieldMeta *field_meta = table_meta.field(i + sys_field_num);
       const AttrType field_type = field_meta->type();
-      const AttrType value_type = values[i].type;
-      if (field_type != value_type) {  // TODO try to convert the value type to field type
-        LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
-            table_name,
-            field_meta->name(),
-            field_type,
-            value_type);
-        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      const AttrType value_type = vals[i].type;
+      if (field_type != value_type) {
+        RC rc = cast_to(&newVals[i], field_type);
+        if (rc != RC::SUCCESS) {
+          return rc;
+        }
       }
     }
   }
 
     // everything alright
-  stmt = new InsertStmt(table, inserts.values, inserts.value_num,inserts.insert_num);
+  stmt = new InsertStmt(table, values, inserts.value_num, inserts.insert_num);
   return RC::SUCCESS;
 }
