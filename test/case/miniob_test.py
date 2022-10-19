@@ -52,7 +52,7 @@ python3 miniob_test.py \
         --test-result-dir=result \
         --test-result-tmp-dir=./result_tmp \
         --use-unix-socket \
-        --git-repo=https://github.com/TangliziGit/miniob.git \
+        --git-repo=https://github.com/TangliziGit/miniob \
         --git-branch=main \
         --code-type=git \
         --target-dir=./miniob \

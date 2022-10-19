@@ -404,11 +404,11 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
-  if (select_stmt->tables().size() != 1) {
+  /**if (select_stmt->tables().size() != 1) {
     LOG_WARN("select more than 1 tables is not supported");
     rc = RC::UNIMPLENMENT;
     return rc;
-  }
+  }*/
 
   Operator *scan_oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
   if (nullptr == scan_oper) {
