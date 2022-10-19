@@ -83,7 +83,7 @@ bool TupleCell::like(const TupleCell &other) const
   if (this->attr_type_ == other.attr_type_ && this->attr_type() == CHARS) {
     /* 默认右侧为匹配串,动态规划 */
     const char *p1 = data_, *p2 = other.data();
-    int len1=strlen(p1), len2 = other.length();
+    int len1 = strnlen(p1,length_), len2 = other.length();
     std::vector<std::vector<bool>> dp(len1+1, std::vector<bool>(len2+1, false));
     dp[0][0] = true;
     for (int i = 1; i <= len2; i++) {
