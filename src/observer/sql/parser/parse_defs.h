@@ -47,6 +47,7 @@ typedef enum
   CHARS,
   INTS,
   FLOATS,
+  TEXTS,
   DATES,
 } AttrType;
 

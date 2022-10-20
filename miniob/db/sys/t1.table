@@ -10,16 +10,16 @@
 		},
 		{
 			"len" : 4,
-			"name" : "key",
+			"name" : "id",
 			"offset" : 4,
 			"type" : "ints",
 			"visible" : true
 		},
 		{
 			"len" : 4,
-			"name" : "value",
+			"name" : "val",
 			"offset" : 8,
-			"type" : "ints",
+			"type" : "dates",
 			"visible" : true
 		}
 	],
