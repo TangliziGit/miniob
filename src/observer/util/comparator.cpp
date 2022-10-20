@@ -107,8 +107,10 @@ RC floats_to(Value *value, AttrType type) {
     case FLOATS:
       break;
     case CHARS: {
-      char string[9];
-      sprintf(string, "%f", *(float *) value->data);
+      char string[100];
+      sprintf(string, "%.2f", *(float *) value->data);
+      size_t len = strlen(string);
+      if (string[len-1] == '0') string[--len] = 0;
       value_init_string(value, string);
       break;
     }
