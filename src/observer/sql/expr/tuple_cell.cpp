@@ -75,14 +75,14 @@ int TupleCell::compare(const TupleCell &other) const
   AttrType target_type = std::max(lhs_type, rhs_type);
   switch (target_type) {
     case INTS: {
-      int rhs = cast_to_int(this->data_, this->attr_type_);
-      int lhs = cast_to_int(other.data_, other.attr_type_);
-      return compare_int(&rhs, &lhs);
+      int lhs = cast_to_int(this->data_, this->attr_type_);
+      int rhs = cast_to_int(other.data_, other.attr_type_);
+      return compare_int(&lhs, &rhs);
     }
     case FLOATS: {
-      float rhs = cast_to_float(this->data_, this->attr_type_);
-      float lhs = cast_to_float(other.data_, other.attr_type_);
-      return compare_float(&rhs, &lhs);
+      float lhs = cast_to_float(this->data_, this->attr_type_);
+      float rhs = cast_to_float(other.data_, other.attr_type_);
+      return compare_float(&lhs, &rhs);
     }
     default: {
       LOG_WARN("not supported");
