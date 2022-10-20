@@ -65,6 +65,11 @@ RC InsertStmt::create(Db *db, const Inserts &inserts, Stmt *&stmt)
       const AttrType field_type = field_meta->type();
       const AttrType value_type = vals[i].type;
       if (field_type != value_type) {
+        // CHARS can not be converted into INTS, see 2.ERROR case in `primary-insert.result`
+        if (field_type == CHARS && value_type == INTS) {
+          return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+        }
+
         RC rc = cast_to(&newVals[i], field_type);
         if (rc != RC::SUCCESS) {
           return rc;
