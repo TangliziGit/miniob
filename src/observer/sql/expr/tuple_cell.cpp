@@ -111,7 +111,7 @@ bool TupleCell::like(const TupleCell &other) const
           dp[i][j] = dp[i - 1][j] || dp[i - 1][j - 1] || dp[i][j - 1];
           continue;
         }
-        if(p2[j-1]=='_'||p2[j-1]==p1[i-1]){
+        if(p2[j-1]=='_'||p2[j-1]==p1[i-1]||(p2[j-1]-32)==p1[i-1]||(p2[j-1]+32==p1[i-1])){
           dp[i][j] = dp[i - 1][j - 1];
         }
       }
