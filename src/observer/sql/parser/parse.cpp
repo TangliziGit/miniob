@@ -120,6 +120,22 @@ void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t
   attr_info->type = type;
   attr_info->length = length;
 }
+void attr_info_init_no_length(AttrInfo *attr_info, const char *name, AttrType type)
+{
+  attr_info->name = strdup(name);
+  attr_info->type = type;
+  int len = 4;
+  switch (attr_info->type)
+  {
+  case TEXTS:
+    len = 4096;
+    break;
+  
+  default:
+    break;
+  }
+  attr_info->length = len;
+}
 void attr_info_destroy(AttrInfo *attr_info)
 {
   free(attr_info->name);

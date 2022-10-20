@@ -209,6 +209,7 @@ void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr
 void condition_destroy(Condition *condition);
 
 void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length);
+void attr_info_init_no_length(AttrInfo *attr_info, const char *name, AttrType type);
 void attr_info_destroy(AttrInfo *attr_info);
 
 void selects_init(Selects *selects, ...);

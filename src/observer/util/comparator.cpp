@@ -86,6 +86,10 @@ RC chars_to(Value *value, AttrType type) {
       value_init_float(value, number);
       break;
     }
+    case TEXTS: {
+      value->type = TEXTS;
+      break;
+    }
     default:
       return RC::SCHEMA_FIELD_TYPE_MISMATCH;
   }
