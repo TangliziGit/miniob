@@ -190,7 +190,7 @@ void *chars_to_number(const char *data, AttrType &type) {
   for ( ; data[i] != 0; i++) {
     char ch = data[i];
     if ('0' <= ch && ch <= '9') {
-      x += x*10 + (ch - '0');
+      x = x*10 + (ch - '0');
     } else if (ch == '.' && idx < 0) {
       idx = i;
     } else {

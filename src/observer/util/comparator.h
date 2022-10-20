@@ -14,6 +14,8 @@ See the Mulan PSL v2 for more details. */
 
 #pragma once
 
+#include "rc.h"
+
 int compare_int(void *arg1, void *arg2);
 int compare_float(void *arg1, void *arg2);
 int compare_string(void *arg1, int arg1_max_length, void *arg2, int arg2_max_length);
@@ -26,5 +28,5 @@ RC cast_to(Value *value, AttrType type);
 int cast_to_int(void *data, AttrType type);
 float cast_to_float(void *data, AttrType type);
 
-static void *chars_to_number(const char *data, AttrType &type);
+void *chars_to_number(const char *data, AttrType &type);
 AttrType cast_target(void *data, AttrType type);
