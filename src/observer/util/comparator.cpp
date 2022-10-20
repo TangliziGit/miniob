@@ -93,7 +93,7 @@ RC ints_to(Value *value, AttrType type) {
       break;
     }
     case FLOATS: {
-      value_init_float(value, *(int*)value->data);
+      value_init_float(value, *(int *)value->data);
       break;
     }
     default:
@@ -113,7 +113,7 @@ RC floats_to(Value *value, AttrType type) {
       break;
     }
     case INTS: {
-      value_init_integer(value, std::round(*(int *) value->data));
+      value_init_integer(value, std::round(*(float *) value->data));
       break;
     }
     default:
