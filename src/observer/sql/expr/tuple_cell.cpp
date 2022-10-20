@@ -70,7 +70,9 @@ int TupleCell::compare(const TupleCell &other) const
     }
   }
 
-  AttrType target_type = std::max(this->attr_type_, other.attr_type_);
+  AttrType lhs_type = cast_target(this->data_, this->attr_type_);
+  AttrType rhs_type = cast_target(other.data_, other.attr_type_);
+  AttrType target_type = std::max(lhs_type, rhs_type);
   switch (target_type) {
     case INTS: {
       int rhs = cast_to_int(this->data_, this->attr_type_);

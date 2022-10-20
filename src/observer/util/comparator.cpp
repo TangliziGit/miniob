@@ -20,6 +20,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/parser/parse_defs.h"
 
 const double epsilon = 1E-6;
+void *chars_to_number(const char *data, AttrType &type);
 
 int compare_int(void *arg1, void *arg2)
 {
@@ -63,16 +64,25 @@ int compare_string(void *arg1, int arg1_max_length, void *arg2, int arg2_max_len
 }
 
 RC chars_to(Value *value, AttrType type) {
+  if (type == CHARS) return RC::SUCCESS;
+
+  AttrType new_type;
+  void *casted = chars_to_number((const char *)value->data, new_type);
+
+  if (new_type == type) {
+    value->type = type;
+    value->data = casted;
+    return RC::SUCCESS;
+  }
+
   switch (type) {
-    case CHARS:
-      break;
     case INTS: {
-      int number = atoi((char *)value->data);
+      int number = static_cast<int>(std::lroundf(*(float *)casted));
       value_init_integer(value, number);
       break;
     }
     case FLOATS: {
-      float number = atof((char *)value->data);
+      auto number = static_cast<float>(*(int *)casted);
       value_init_float(value, number);
       break;
     }
@@ -171,4 +181,48 @@ float cast_to_float(void *data, AttrType type) {
       break;
   }
   return res;
+}
+
+void *chars_to_number(const char *data, AttrType &type) {
+  int x = 0;
+  int idx = -1;
+  int i = 0;
+  for ( ; data[i] != 0; i++) {
+    char ch = data[i];
+    if ('0' <= ch && ch <= '9') {
+      x += x*10 + (ch - '0');
+    } else if (ch == '.' && idx < 0) {
+      idx = i;
+    } else {
+      break;
+    }
+  }
+
+  // now data[0:i] only contain numbers and one dot
+  if (i == 0) {
+    type = INTS;
+    auto *res = new int{0};
+    return res;
+  }
+
+  // the chars contain one dot, so make result to be a float
+  // corner case: `.`, `1.`, and `.1`
+  if (idx >= 0) {
+    type = FLOATS;
+    auto *res = new float{static_cast<float>(x * std::pow(0.1, i - idx - 1))};
+    return res;
+  }
+
+  // chars only contain numbers, so the result is an int
+  type = INTS;
+  auto *res = new int{x};
+  return res;
+}
+
+AttrType cast_target(void *data, AttrType type) {
+  if (type != CHARS) return type;
+
+  AttrType new_type;
+  chars_to_number((const char *)data, new_type);
+  return new_type;
 }

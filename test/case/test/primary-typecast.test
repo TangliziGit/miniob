@@ -33,3 +33,6 @@ select * from typecast_table where name = 12;
 
 -- echo 7. float to string
 select * from typecast_table where name = 1.5;
+
+-- echo 8. float string to int
+select * from typecast_table where id < '1.5a';
