@@ -96,7 +96,7 @@ bool TupleCell::like(const TupleCell &other) const
     for (int i = 1; i <= len1;i++){
       for (int j = 1; j <= len2;j++){
         if(p2[j-1]=='%'){
-          dp[i][j] = dp[i - 1][j] || dp[i - 1][j - 1];
+          dp[i][j] = dp[i - 1][j] || dp[i - 1][j - 1] || dp[i][j - 1];
           continue;
         }
         if(p2[j-1]=='_'||p2[j-1]==p1[i-1]){
