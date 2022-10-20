@@ -44,7 +44,7 @@ RC InsertStmt::create(Db *db, const Inserts &inserts, Stmt *&stmt)
 
   // check the fields number and type cast
   auto values = new Value[MAX_NUM][MAX_NUM];
-  memcpy(values, inserts.values, sizeof(inserts.value_num));
+  memcpy(values, inserts.values, sizeof(inserts.values));
 
   int n = inserts.insert_num;
   for (int i = 0; i < n; i++) {
