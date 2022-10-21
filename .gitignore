@@ -5,6 +5,8 @@ test/case/result_tmp
 ./deps/jsoncpp
 build/*
 cmake-build-*/*
+observer.log*
+miniob
 .vscode/*
 .DS_Store
 .idea
