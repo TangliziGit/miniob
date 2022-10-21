@@ -22,7 +22,8 @@ typedef struct ParserContext {
   Value insert_values[MAX_NUM][MAX_NUM];
   Condition conditions[MAX_NUM];
   CompOp comp;
-	char id[MAX_NUM];
+  size_t id_num;
+  char id[MAX_NUM][MAX_NUM];
 } ParserContext;
 
 //获取子串
@@ -46,8 +47,9 @@ void yyerror(yyscan_t scanner, const char *str)
   context->from_length = 0;
   context->select_length = 0;
   context->value_length = 0;
-  memset(context->ssql->sstr.insertion.value_num,0,sizeof(context->ssql->sstr.insertion.value_num));
-  context->ssql->sstr.insertion.insert_num=0;
+  memset(context->insert_value_length,0,sizeof(context->insert_value_length));
+  context->insert_num=0;
+  context->id_num=0;
   printf("parse sql failed. error=%s", str);
 }
 
@@ -109,6 +111,7 @@ ParserContext *get_context(yyscan_t scanner)
         NE
         NOT
         LIKE_T
+        UNIQUE
 
 %union {
   struct _Attr *attr;
@@ -217,10 +220,15 @@ desc_table:
     ;
 
 create_index:		/*create index 语句的语法解析树*/
-    CREATE INDEX ID ON ID LBRACE ID RBRACE SEMICOLON 
+    CREATE INDEX ID ON ID LBRACE ID_get id_list RBRACE SEMICOLON 
 		{
 			CONTEXT->ssql->flag = SCF_CREATE_INDEX;//"create_index";
-			create_index_init(&CONTEXT->ssql->sstr.create_index, $3, $5, $7);
+			create_index_init(&CONTEXT->ssql->sstr.create_index, $3, $5, CONTEXT->id_num,CONTEXT->id,0);
+		}
+	| CREATE UNIQUE INDEX ID ON ID LBRACE ID_get id_list RBRACE SEMICOLON
+	    {
+			CONTEXT->ssql->flag = SCF_CREATE_INDEX;//"create_index";
+			create_index_init(&CONTEXT->ssql->sstr.create_index, $4, $6, CONTEXT->id_num,CONTEXT->id,1);
 		}
     ;
 
@@ -247,17 +255,17 @@ attr_def_list: %empty
     ;
     
 attr_def:
-    ID_get type LBRACE number RBRACE 
+    ID type LBRACE number RBRACE 
 		{
 			AttrInfo attribute;
-			attr_info_init(&attribute, CONTEXT->id, $2, $4);
+			attr_info_init(&attribute, $1, $2, $4);
 			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
 			CONTEXT->value_length++;
 		}
-    |ID_get type
+    |ID type
 		{
 			AttrInfo attribute;
-			attr_info_init(&attribute, CONTEXT->id, $2, 4);
+			attr_info_init(&attribute, $1, $2, 4);
 			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
 			CONTEXT->value_length++;
 		}
@@ -271,11 +279,17 @@ type:
        | FLOAT_T { $$=FLOATS; }
 	   | DATE_T { $$=DATES;}
        ;
+id_list: %empty
+   /*empty*/
+   |COMMA ID_get id_list{
+	 
+   };
 ID_get:
 	ID 
 	{
-		char *temp=$1; 
-		snprintf(CONTEXT->id, sizeof(CONTEXT->id), "%s", temp);
+		size_t cur_size = CONTEXT->id_num;
+		snprintf(CONTEXT->id[cur_size], sizeof(CONTEXT->id[cur_size]), "%s", $1);
+		CONTEXT->id_num++;
 	}
 	;
 

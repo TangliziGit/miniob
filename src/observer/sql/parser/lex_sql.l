@@ -37,8 +37,8 @@ QUOTE            [\'\"]
 
 [\-]?{DIGIT}+                                        yylval->number=atoi(yytext); RETURN_TOKEN(NUMBER);
 [\-]?{DIGIT}+{DOT}{DIGIT}+                           yylval->floats=(float)(atof(yytext)); RETURN_TOKEN(FLOAT);
-{QUOTE}([0-9]+)\-([0-9]+)\-([0-9]+){QUOTE}    yylval->string=strdup(yytext);RETURN_TOKEN(DATE);
-
+{QUOTE}([0-9]+)\-([0-9]+)\-([0-9]+){QUOTE}           yylval->string=strdup(yytext);RETURN_TOKEN(DATE);
+[Uu][Nn][Ii][Qq][Uu][Ee]                             RETURN_TOKEN(UNIQUE);
 [Nn][Oo][Tt]                                         RETURN_TOKEN(NOT);
 [Ll][Ii][Kk][Ee]                                     RETURN_TOKEN(LIKE_T);
 ";"                                                  RETURN_TOKEN(SEMICOLON);

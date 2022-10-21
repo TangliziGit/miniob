@@ -19,6 +19,7 @@ See the Mulan PSL v2 for more details. */
 
 #include <string.h>
 #include <sstream>
+#include <vector>
 #include <functional>
 
 #include "storage/record/record_manager.h"
@@ -71,28 +72,47 @@ private:
 class KeyComparator
 {
 public:
-  void init(AttrType type, int length)
+  virtual void init(AttrType type,int length,bool compare_rid = true)
   {
-    attr_comparator_.init(type, length);
+    attr_comparator_.resize(1);
+    attr_comparator_[0].init(type, length);
+    compare_rid_ = compare_rid;
+  }
+  virtual void init(AttrType type[MAX_NUM],int length[MAX_NUM],int attr_num,bool compare_rid = true)
+  {
+    attr_comparator_.resize(attr_num);
+    for (int i = 0; i < attr_num; i++)
+      attr_comparator_[i].init(type[i], length[i]);
+    compare_rid_ = compare_rid;
   }
 
-  const AttrComparator &attr_comparator() const {
-    return attr_comparator_;
+  virtual const AttrComparator &attr_comparator(int idx) const {
+    return attr_comparator_[idx];
   }
 
-  int operator() (const char *v1, const char *v2) const {
-    int result = attr_comparator_(v1, v2);
-    if (result != 0) {
-      return result;
+  virtual int operator() (const char *v1, const char *v2) const {
+    for (size_t i = 0; i < attr_comparator_.size(); i++) {
+      int result = attr_comparator_[i](v1, v2);
+      if (result != 0) {
+        return result;
+      }
+      v1 += attr_comparator_[i].attr_length();
+      v2 += attr_comparator_[i].attr_length();
     }
-
-    const RID *rid1 = (const RID *)(v1 + attr_comparator_.attr_length());
-    const RID *rid2 = (const RID *)(v2 + attr_comparator_.attr_length());
-    return RID::compare(rid1, rid2);
+    if(compare_rid_){
+          const RID *rid1 = (const RID *)(v1);
+          const RID *rid2 = (const RID *)(v2);
+          return RID::compare(rid1, rid2);
+    }
+    return 0;
+  }
+  void set_compare_rid(bool compare_rid){
+    compare_rid_ = compare_rid;
   }
 
-private:
-  AttrComparator attr_comparator_;
+protected:
+  bool compare_rid_;
+  std::vector<AttrComparator> attr_comparator_;
 };
 
 class AttrPrinter
@@ -153,26 +173,33 @@ private:
 class KeyPrinter
 {
 public:
-  void init(AttrType type, int length)
+  void init(AttrType type[MAX_NUM], int length[MAX_NUM],int attr_num)
   {
-    attr_printer_.init(type, length);
+    attr_printer_.resize(attr_num);
+    for (int i = 0; i < attr_num;i++){
+      attr_printer_[i].init(type[i], length[i]);
+    }
   }
 
-  const AttrPrinter &attr_printer() const {
-    return attr_printer_;
+  const AttrPrinter &attr_printer(int idx) const {
+    return attr_printer_[idx];
   }
 
   std::string operator() (const char *v) const {
     std::stringstream ss;
-    ss << "{key:" << attr_printer_(v) << ",";
+    ss << "{key:";
+    for (size_t i = 0; i < attr_printer_.size();i++){
+      ss << attr_printer_[i](v) << ",";
+      v += attr_printer_[i].attr_length();
+    }
 
-    const RID *rid = (const RID *)(v + attr_printer_.attr_length());
+    const RID *rid = (const RID *)(v);
     ss << "rid:{" << rid->to_string() << "}}";
     return ss.str();
   }
 
 private:
-  AttrPrinter attr_printer_;
+  std::vector<AttrPrinter> attr_printer_;
 };
 
 /**
@@ -186,23 +213,25 @@ struct IndexFileHeader {
     memset(this, 0, sizeof(IndexFileHeader));
     root_page = BP_INVALID_PAGE_NUM;
   }
-  PageNum  root_page;
+  bool is_unique;
+  PageNum root_page;
   int32_t  internal_max_size;
   int32_t  leaf_max_size;
-  int32_t  attr_length;
+  int32_t attr_num;
+  int32_t attr_length[MAX_NUM];
+  AttrType attr_type[MAX_NUM];
   int32_t  key_length; // attr length + sizeof(RID)
-  AttrType attr_type;
 
   const std::string to_string()
   {
     std::stringstream ss;
-
-    ss << "attr_length:" << attr_length << ","
-       << "key_length:" << key_length << ","
-       << "attr_type:" << attr_type << ","
-       << "root_page:" << root_page << ","
-       << "internal_max_size:" << internal_max_size << ","
-       << "leaf_max_size:" << leaf_max_size << ";";
+    /* no need for now? */
+    // ss << "attr_length:" << attr_length << ","
+    //    << "key_length:" << key_length << ","
+    //    << "attr_type:" << attr_type << ","
+    //    << "root_page:" << root_page << ","
+    //    << "internal_max_size:" << internal_max_size << ","
+    //    << "leaf_max_size:" << leaf_max_size << ";";
 
     return ss.str();
   }
@@ -400,8 +429,9 @@ public:
    * 此函数创建一个名为fileName的索引。
    * attrType描述被索引属性的类型，attrLength描述被索引属性的长度
    */
-  RC create(const char *file_name, AttrType attr_type, int attr_length,
+  RC create(const char *file_name, const std::vector<AttrType> &attr_type,const std::vector<int> &attr_length,int total_length,bool is_unique,
 	    int internal_max_size = -1, int leaf_max_size = -1);
+  RC create(const char *file_name, AttrType attr_type,int attr_length,int internal_max_size = -1, int leaf_max_size = -1);
 
   /**
    * 打开名为fileName的索引文件。
@@ -421,6 +451,7 @@ public:
    * 即向索引中插入一个值为（user_key，rid）的键值对
    * @note 这里假设user_key的内存大小与attr_length 一致
    */
+  RC insert_entry(const char *user_key[MAX_NUM], const RID *rid);
   RC insert_entry(const char *user_key, const RID *rid);
 
   /**
@@ -428,6 +459,7 @@ public:
    * @return RECORD_INVALID_KEY 指定值不存在
    * @note 这里假设user_key的内存大小与attr_length 一致
    */
+  RC delete_entry(const char *user_key[MAX_NUM], const RID *rid);
   RC delete_entry(const char *user_key, const RID *rid);
 
   bool is_empty() const;
@@ -491,7 +523,9 @@ protected:
   RC adjust_root(Frame *root_frame);
 
 private:
+  char *make_key(const char *user_key[MAX_NUM], const RID &rid);
   char *make_key(const char *user_key, const RID &rid);
+  char *make_search_key(const char *user_key, const RID &rid,bool left);
   void  free_key(char *key);
 protected:
   DiskBufferPool *disk_buffer_pool_ = nullptr;

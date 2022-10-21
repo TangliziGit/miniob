@@ -296,6 +296,9 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
     if (left->type() == ExprType::FIELD && right->type() == ExprType::VALUE) {
     } else if (left->type() == ExprType::VALUE && right->type() == ExprType::FIELD) {
       std::swap(left, right);
+    }else{
+      /* 其他情况没法用索引 */
+      continue;
     }
     FieldExpr &left_field_expr = *(FieldExpr *)left;
     const Field &field = left_field_expr.field();
@@ -502,14 +505,18 @@ RC ExecuteStage::do_create_index(SQLStageEvent *sql_event)
 {
   SessionEvent *session_event = sql_event->session_event();
   Db *db = session_event->session()->get_current_db();
-  const CreateIndex &create_index = sql_event->query()->sstr.create_index;
+  CreateIndex &create_index = sql_event->query()->sstr.create_index;
   Table *table = db->find_table(create_index.relation_name);
   if (nullptr == table) {
     session_event->set_response("FAILURE\n");
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
 
-  RC rc = table->create_index(nullptr, create_index.index_name, create_index.attribute_name);
+  RC rc = table->create_index(nullptr,
+      create_index.index_name,
+      create_index.attribute_count,
+      create_index.attribute_name,
+      create_index.is_unique);
   sql_event->session_event()->set_response(rc == RC::SUCCESS ? "SUCCESS\n" : "FAILURE\n");
   return rc;
 }
@@ -545,14 +552,13 @@ RC ExecuteStage::do_show_index(SQLStageEvent *sql_event)
   ss << "Table | Non_unique | Key_name | Seq_in_index | Column_name" << std::endl;
   for (int i = 0; i < tb_meta.index_num(); i++) {
     const IndexMeta *index_meta = tb_meta.index(i);
-    ss << tb->name();
-    ss << " | ";
-    ss << "1 | ";
-    ss << index_meta->name();
-    ss << " | 1";
-    ss << " | ";
-    ss << index_meta->field();
-    ss << std::endl;
+    for (int j = 0; j < index_meta->filed_length(); j++) {
+      ss << tb->name() << " | ";
+      ss << (index_meta->is_unique() ? 0 : 1) << " | ";
+      ss << index_meta->name() << " | ";
+      ss << (j + 1) << " | ";
+      ss << index_meta->field(j) << "\n";
+    }
   }
   session_event->set_response(ss.str().c_str());
   return RC::SUCCESS;
@@ -596,8 +602,9 @@ RC ExecuteStage::do_insert(SQLStageEvent *sql_event)
     rc = table->insert_record(trx, insert_stmt->value_amount(i), insert_stmt->values(i));
     if (rc != RC::SUCCESS) {
       if(trx!=nullptr){
-        /* 回滚之前的删除 */
-        trx->rollback();
+        /* 回滚之前的插入 */
+        /* 有bug,如果一个client一直连着这个server,那么所有语句都用的这一个txn,不是每条语句重新新建txn */
+        // trx->rollback();
       }
       session_event->set_response("FAILURE\n");
       return rc;

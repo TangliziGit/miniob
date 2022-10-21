@@ -30,3 +30,23 @@ std::string double2string(double v)
 
   return std::string(buf, len);
 }
+
+int get_char_min(){
+  return 0;
+}
+int get_char_max(){
+  return std::numeric_limits<char>::max();
+};
+int get_int_min(){
+  /* +1防溢出 */
+  return std::numeric_limits<int>::min()+1;
+}
+int get_int_max(){
+  return std::numeric_limits<int>::max();
+}
+float get_float_min(){
+  return std::numeric_limits<float>::min();
+}
+float get_float_max(){
+  return std::numeric_limits<float>::max();
+}

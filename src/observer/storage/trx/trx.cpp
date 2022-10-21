@@ -42,6 +42,8 @@ void Trx::set_trx_id(int32_t id)
 void Trx::next_current_id()
 {
   Trx::next_trx_id();
+  /* 事务结束后,操作就不保留下来了. */
+  operations_.clear();
   trx_id_ = trx_id;
 }
 

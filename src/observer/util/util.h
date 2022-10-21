@@ -15,5 +15,13 @@ See the Mulan PSL v2 for more details. */
 #pragma once
 
 #include <string>
+#include <limits>
 
 std::string double2string(double v);
+
+int get_char_min();
+int get_char_max();
+int get_int_min();
+int get_int_max();
+float get_float_min();
+float get_float_max();

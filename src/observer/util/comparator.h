@@ -26,5 +26,5 @@ RC cast_to(Value *value, AttrType type);
 int cast_to_int(void *data, AttrType type);
 float cast_to_float(void *data, AttrType type);
 
-static void *chars_to_number(const char *data, AttrType &type);
+void *chars_to_number(const char *data, AttrType &type);
 AttrType cast_target(void *data, AttrType type);
