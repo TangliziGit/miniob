@@ -22,6 +22,63 @@ RC parse(char *st, Query *sqln);
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
+void function_init_attr(RelAttr *function, const char *function_name, RelAttr *relation_attr) {
+  *function = {
+      .relation_name = nullptr,
+      .attribute_name = nullptr,
+      .function = new Function {
+          .function_name = strdup(function_name),
+          .parameter_num = 1,
+          .parameters = {
+              {
+                  .is_value = true,
+                  .value = nullptr,
+                  .attribute = new Parameter::RelAttr {
+                      .relation_name = relation_attr->relation_name,
+                      .attribute_name = relation_attr->attribute_name,
+                  }
+              }
+          }
+      }
+  };
+}
+
+void function_init_value(RelAttr *function, const char *function_name, Value *value) {
+  *function = {
+      .relation_name = nullptr,
+      .attribute_name = nullptr,
+      .function = new Function {
+          .function_name = strdup(function_name),
+          .parameter_num = 1,
+          .parameters = {
+              {
+                  .is_value = true,
+                  .value = new Parameter::Value {
+                      .type = value->type,
+                      .data = value->data
+                  },
+                  .attribute = nullptr
+              }
+          }
+      }
+  };
+}
+
+void function_destroy(Function *function) {
+  if (function == nullptr) return;
+
+  free(function->function_name);
+  function->function_name = nullptr;
+  for (size_t i = 0; i < function->parameter_num; i++) {
+    free(function->parameters[i].value->data);
+    function->parameters[i].value->data = nullptr;
+    free(function->parameters[i].attribute->attribute_name);
+    function->parameters[i].attribute->attribute_name = nullptr;
+    free(function->parameters[i].attribute->relation_name);
+    function->parameters[i].attribute->relation_name = nullptr;
+  }
+}
+
 void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const char *attribute_name)
 {
   if (relation_name != nullptr) {
@@ -36,8 +93,11 @@ void relation_attr_destroy(RelAttr *relation_attr)
 {
   free(relation_attr->relation_name);
   free(relation_attr->attribute_name);
+  function_destroy(relation_attr->function);
+  free(relation_attr->function);
   relation_attr->relation_name = nullptr;
   relation_attr->attribute_name = nullptr;
+  relation_attr->function = nullptr;
 }
 
 void value_init_integer(Value *value, int v)

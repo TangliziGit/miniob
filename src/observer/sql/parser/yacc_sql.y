@@ -17,6 +17,8 @@ typedef struct ParserContext {
   size_t from_length;
   size_t value_length;
   Value values[MAX_NUM];
+  size_t function_length;
+  RelAttr functions[MAX_NUM];
   size_t insert_num;
   size_t insert_value_length[MAX_NUM];
   Value insert_values[MAX_NUM][MAX_NUM];
@@ -118,6 +120,7 @@ ParserContext *get_context(yyscan_t scanner)
   struct _Attr *attr;
   struct _Condition *condition1;
   struct _Value *value1;
+  struct Function *function1;
   char *string;
   int number;
   float floats;
@@ -138,6 +141,7 @@ ParserContext *get_context(yyscan_t scanner)
 %type <condition1> condition;
 %type <value1> value;
 %type <number> number;
+%type <function1> function;
 
 %%
 
@@ -398,12 +402,7 @@ select:				/*  select 语句的语法解析树*/
 	;
 
 select_attr:
-    STAR {  
-			RelAttr attr;
-			relation_attr_init(&attr, NULL, "*");
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-    }
-    | STAR attr_list {
+    STAR attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, "*");
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
@@ -412,30 +411,63 @@ select_attr:
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, $1);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-		}
-  	| ID DOT ID attr_list {
+    }
+    | ID DOT ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, $1, $3);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-		}
+    }
+    | function attr_list {
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &1);
+    }
     ;
+
+function:
+	ID LBRACE ID RBRACE {
+		RelAttr attr;
+		relation_attr_init(&attr, NULL, $3);
+		function_init_attr(&CONTEXT->functions[CONTEXT->function_length++], $1, &attr);
+		$$=&CONTEXT->functions[CONTEXT->function_length-1];
+	}
+	| ID LBRACE ID DOT ID RBRACE {
+		RelAttr attr;
+		relation_attr_init(&attr, $3, $5);
+		function_init_attr(&CONTEXT->functions[CONTEXT->function_length++], $1, &attr);
+		$$=&CONTEXT->functions[CONTEXT->function_length-1];
+	}
+	| ID LBRACE STAR RBRACE {
+		RelAttr attr;
+		relation_attr_init(&attr, NULL, "*");
+		function_init_attr(&CONTEXT->functions[CONTEXT->function_length++], $1, &attr);
+		$$=&CONTEXT->functions[CONTEXT->function_length-1];
+	}
+	| ID LBRACE value RBRACE {
+		Value *value = &CONTEXT->values[CONTEXT->value_length - 1];
+		function_init_attr(&CONTEXT->functions[CONTEXT->function_length++], $1, &attr);
+		$$=&CONTEXT->functions[CONTEXT->function_length-1];
+	}
+	;
+
 attr_list: %empty 
     /* empty */
     | COMMA ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, $2);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-     	  // CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length].relation_name = NULL;
-        // CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length++].attribute_name=$2;
-      }
+     	  		// CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length].relation_name = NULL;
+        		// CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length++].attribute_name=$2;
+    }
     | COMMA ID DOT ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, $2, $4);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-        // CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length].attribute_name=$4;
-        // CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length++].relation_name=$2;
-  	  }
-  	;
+        		// CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length].attribute_name=$4;
+        		// CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length++].relation_name=$2;
+    }
+    | COMMA function attr_list {
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &2);
+    }
+    ;
 
 rel_list: %empty 
     /* empty */
