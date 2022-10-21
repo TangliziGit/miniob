@@ -14,6 +14,8 @@ See the Mulan PSL v2 for more details. */
 
 #pragma once
 
+#include "rc.h"
+
 int compare_int(void *arg1, void *arg2);
 int compare_float(void *arg1, void *arg2);
 int compare_string(void *arg1, int arg1_max_length, void *arg2, int arg2_max_length);

@@ -90,6 +90,7 @@ ParserContext *get_context(yyscan_t scanner)
         STRING_T
         FLOAT_T
 		DATE_T
+		TEXT_T
         HELP
         EXIT
         DOT //QUOTE
@@ -265,7 +266,7 @@ attr_def:
     |ID type
 		{
 			AttrInfo attribute;
-			attr_info_init(&attribute, $1, $2, 4);
+			attr_info_init_no_length(&attribute,$1, $2);
 			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
 			CONTEXT->value_length++;
 		}
@@ -278,6 +279,7 @@ type:
        | STRING_T { $$=CHARS; }
        | FLOAT_T { $$=FLOATS; }
 	   | DATE_T { $$=DATES;}
+	   | TEXT_T { $$=TEXTS;}
        ;
 id_list: %empty
    /*empty*/

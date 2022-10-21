@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/update_stmt.h"
 #include "sql/stmt/filter_stmt.h"
 #include "storage/common/db.h"
+#include "util/comparator.h"
 
 UpdateStmt::UpdateStmt(Table *table, FilterStmt *filter, const char *attr_name, Value value)
   : table_ (table), filter_(filter), attr_name_(attr_name), value_(value)
@@ -41,10 +42,13 @@ RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
     LOG_WARN("no such attribute name field. db=%s, table_name=%s, attribute_name=%s", db->name(), table_name, update.attribute_name);
     return RC::SCHEMA_FIELD_NOT_EXIST;
   }
-
+  auto new_value = new Value;
+  memcpy(new_value, &update.value, sizeof(update.value));
   if (attr_meta->type() != update.value.type) {
-    LOG_WARN("attribute field type mismatched. db=%s, table_name=%s, attribute_name=%s", db->name(), table_name, update.attribute_name);
-    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    RC rc = cast_to(new_value, attr_meta->type());
+    if (rc != RC::SUCCESS) {
+      return rc;
+    }
   }
 
   std::unordered_map<std::string, Table *> table_map;
@@ -58,6 +62,6 @@ RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
     return rc;
   }
 
-  stmt = new UpdateStmt(table, filter_stmt, update.attribute_name, update.value);
+  stmt = new UpdateStmt(table, filter_stmt, update.attribute_name, *new_value);
   return rc;
 }

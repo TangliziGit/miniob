@@ -39,14 +39,14 @@ int get_char_max(){
 };
 int get_int_min(){
   /* +1防溢出 */
-  return std::numeric_limits<int>::min()+1;
+  return std::numeric_limits<int>::min()/2;
 }
 int get_int_max(){
-  return std::numeric_limits<int>::max();
+  return std::numeric_limits<int>::max()/2;
 }
 float get_float_min(){
-  return std::numeric_limits<float>::min();
+  return std::numeric_limits<float>::min()/2;
 }
 float get_float_max(){
-  return std::numeric_limits<float>::max();
+  return std::numeric_limits<float>::max()/2;
 }

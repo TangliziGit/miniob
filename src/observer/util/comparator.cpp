@@ -86,6 +86,10 @@ RC chars_to(Value *value, AttrType type) {
       value_init_float(value, number);
       break;
     }
+    case TEXTS: {
+      value->type = TEXTS;
+      break;
+    }
     default:
       return RC::SCHEMA_FIELD_TYPE_MISMATCH;
   }
@@ -190,7 +194,7 @@ void *chars_to_number(const char *data, AttrType &type) {
   for ( ; data[i] != 0; i++) {
     char ch = data[i];
     if ('0' <= ch && ch <= '9') {
-      x += x*10 + (ch - '0');
+      x = x*10 + (ch - '0');
     } else if (ch == '.' && idx < 0) {
       idx = i;
     } else {

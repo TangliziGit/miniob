@@ -405,11 +405,11 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
-  if (select_stmt->tables().size() != 1) {
+  /**if (select_stmt->tables().size() != 1) {
     LOG_WARN("select more than 1 tables is not supported");
     rc = RC::UNIMPLENMENT;
     return rc;
-  }
+  }*/
 
   Operator *scan_oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
   if (nullptr == scan_oper) {
@@ -603,8 +603,7 @@ RC ExecuteStage::do_insert(SQLStageEvent *sql_event)
     if (rc != RC::SUCCESS) {
       if(trx!=nullptr){
         /* 回滚之前的插入 */
-        /* 有bug,如果一个client一直连着这个server,那么所有语句都用的这一个txn,不是每条语句重新新建txn */
-        // trx->rollback();
+        trx->rollback();
       }
       session_event->set_response("FAILURE\n");
       return rc;

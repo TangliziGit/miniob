@@ -36,3 +36,10 @@ select * from typecast_table where name = 1.5;
 
 -- echo 8. float string to int
 select * from typecast_table where id < '1.5a';
+
+-- echo 9. compare string and others
+create table Typecast_table_4 (a int, b int, c int);
+INSERT INTO Typecast_table_4 VALUES(1,1,1);
+SELECT * FROM Typecast_table_4 WHERE 'a'<1;
+SELECT * FROM Typecast_table_4 WHERE '1a'>0;
+SELECT * FROM Typecast_table_4 WHERE '1a'>0.5;
