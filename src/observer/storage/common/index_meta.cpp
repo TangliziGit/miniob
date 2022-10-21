@@ -96,7 +96,7 @@ bool IndexMeta::is_unique() const
 void IndexMeta::desc(std::ostream &os) const
 {
   os << "index name=" << name_ << ", field=" << fields_[0];
-  for (auto i = 1; i < fields_.size();i++){
+  for (size_t i = 1; i < fields_.size();i++){
     os << "," << fields_[i];
   }
 }

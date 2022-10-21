@@ -18,8 +18,8 @@ See the Mulan PSL v2 for more details. */
 #include "storage/common/db.h"
 #include "util/comparator.h"
 
-UpdateStmt::UpdateStmt(Table *table, FilterStmt *filter, const char *attr_name, Value value)
-  : table_ (table), filter_(filter), attr_name_(attr_name), value_(value)
+UpdateStmt::UpdateStmt(Table *table, FilterStmt *filter,std::vector<const char *>&attr_name,std::vector<Value>&value)
+  :table_ (table), filter_(filter),attr_name_(std::move(attr_name)),value_(std::move(value))
 {}
 
 RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
@@ -36,22 +36,30 @@ RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
     LOG_WARN("no such table. db=%s, table_name=%s", db->name(), table_name);
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
-
-  const FieldMeta *attr_meta = table->table_meta().field(update.attribute_name);
-  if (attr_meta == nullptr) {
-    LOG_WARN("no such attribute name field. db=%s, table_name=%s, attribute_name=%s", db->name(), table_name, update.attribute_name);
-    return RC::SCHEMA_FIELD_NOT_EXIST;
-  }
-  auto new_value = new Value;
-  memcpy(new_value, &update.value, sizeof(update.value));
-  if (attr_meta->type() != update.value.type) {
-    RC rc = cast_to(new_value, attr_meta->type());
-    if (rc != RC::SUCCESS) {
-      return rc;
+  std::vector<const char *> attr_name;
+  std::vector<Value> value;
+  int num = update.attr_num;
+  for (int i = 0; i < num; i++) {
+    const FieldMeta *attr_meta = table->table_meta().field(update.attribute_name[i]);
+    if (attr_meta == nullptr) {
+      LOG_WARN("no such attribute name field. db=%s, table_name=%s, attribute_name=%s",
+          db->name(),
+          table_name,
+          update.attribute_name);
+      return RC::SCHEMA_FIELD_NOT_EXIST;
     }
+    Value new_value = update.value[i];
+    if (attr_meta->type() != update.value[i].type) {
+      RC rc = cast_to(&new_value, attr_meta->type());
+      if (rc != RC::SUCCESS) {
+        return rc;
+      }
+    }
+    attr_name.emplace_back(update.attribute_name[i]);
+    value.emplace_back(new_value);
   }
 
-  std::unordered_map<std::string, Table *> table_map;
+    std::unordered_map<std::string, Table *> table_map;
   table_map.insert(std::pair<std::string, Table *>(std::string(table_name), table));
 
   FilterStmt *filter_stmt = nullptr;
@@ -62,6 +70,6 @@ RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
     return rc;
   }
 
-  stmt = new UpdateStmt(table, filter_stmt, update.attribute_name, *new_value);
+  stmt = new UpdateStmt(table, filter_stmt, attr_name, value);
   return rc;
 }

@@ -212,7 +212,7 @@ RC DefaultHandler::update_record(Trx *trx, const char *dbname, const char *relat
     return rc;
   }
 
-  return table->update_record(trx, attribute_name, value, filter, updated_count);
+  return table->update_record(trx,std::vector<const char *>{attribute_name},std::vector<Value>{*value}, filter, updated_count);
 }
 
 Db *DefaultHandler::find_db(const char *dbname) const

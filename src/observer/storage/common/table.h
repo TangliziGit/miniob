@@ -57,8 +57,8 @@ public:
   RC open(const char *meta_file, const char *base_dir, CLogManager *clog_manager);
 
   RC insert_record(Trx *trx, int value_num, const Value *values);
-  RC update_record(Trx *trx, const char *attribute_name, const Value *value, ConditionFilter &filter, int *updated_count);
-  RC update_record(Trx *trx, Record *record, const char *attribute_name, const Value *value);
+  RC update_record(Trx *trx, const std::vector<const char *> &attribute_name, const std::vector<Value> &value, ConditionFilter &filter, int *updated_count);
+  RC update_record(Trx *trx, Record *record, const std::vector<const char *> &attribute_name, const std::vector<Value> &value);
   RC delete_record(Trx *trx, ConditionFilter *filter, int *deleted_count);
   RC delete_record(Trx *trx, Record *record);
   RC recover_delete_record(Record *record);

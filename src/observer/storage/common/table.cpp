@@ -680,8 +680,8 @@ class RecordUpdater {
 public:
   RecordUpdater(Table &table,
                 Trx *trx,
-                const char *attribute_name,
-                const Value *value)
+                const std::vector<const char *>&attribute_name,
+                const std::vector<Value>&value)
       : table_(table), trx_(trx), attribute_name_(attribute_name), value_(value) {}
 
   RC update_record(Record *record)
@@ -701,8 +701,8 @@ private:
   Table &table_;
   Trx *trx_;
 
-  const char *attribute_name_;
-  const Value *value_;
+  std::vector<const char *>attribute_name_;
+  std::vector<Value> value_;
   int updated_count_ = 0;
 };
 
@@ -712,7 +712,7 @@ static RC record_reader_update_adapter(Record *record, void *context)
   return updater.update_record(record);
 }
 
-RC Table::update_record(Trx *trx, const char *attribute_name, const Value *value, ConditionFilter &filter, int *updated_count)
+RC Table::update_record(Trx *trx, const std::vector<const char *>&attribute_name, const std::vector<Value> &value, ConditionFilter &filter, int *updated_count)
 {
   RecordUpdater updater(*this, trx, attribute_name, value);
   RC rc = scan_record(trx, &filter, -1, &updater, record_reader_update_adapter);
@@ -722,25 +722,32 @@ RC Table::update_record(Trx *trx, const char *attribute_name, const Value *value
   return rc;
 }
 
-RC Table::update_record(Trx *trx, Record *record, const char *attribute_name, const Value *value) {
-  const FieldMeta *meta = table_meta_.field(attribute_name);
+RC Table::update_record(Trx *trx, Record *record, const std::vector<const char *>&attribute_name, const std::vector<Value> &value) {
   RC rc = RC::SUCCESS;
-
-  if (meta == nullptr) {
-    rc = RC::SCHEMA_FIELD_MISSING;
-    LOG_ERROR("Failed to update record (rid=%d.%d). rc=%d:%s",
-              record->rid().page_num, record->rid().slot_num, rc, strrc(rc));
-    return rc;
-  }
 
   rc = delete_entry_of_indexes(record->data(), record->rid(), false);
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to delete indexes of record (rid=%d.%d) during update. rc=%d:%s",
-              record->rid().page_num, record->rid().slot_num, rc, strrc(rc));
+        record->rid().page_num,
+        record->rid().slot_num,
+        rc,
+        strrc(rc));
     return rc;
   }
+  for (size_t i = 0; i < attribute_name.size();i++){
+    const FieldMeta *meta = table_meta_.field(attribute_name[i]);
 
-  memmove(record->data() + meta->offset(), value->data, meta->len());
+    if (meta == nullptr) {
+      rc = RC::SCHEMA_FIELD_MISSING;
+      LOG_ERROR("Failed to update record (rid=%d.%d). rc=%d:%s",
+          record->rid().page_num,
+          record->rid().slot_num,
+          rc,
+          strrc(rc));
+      return rc;
+    }
+    memmove(record->data() + meta->offset(), value[i].data, meta->len());
+  }
 
   if (trx == nullptr) {
     rc = record_handler_->update_record(record);

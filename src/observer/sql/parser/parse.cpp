@@ -228,14 +228,15 @@ void deletes_destroy(Deletes *deletes)
   deletes->relation_name = nullptr;
 }
 
-void updates_init(Updates *updates, const char *relation_name, const char *attribute_name, Value *value,
+void updates_init(Updates *updates, const char *relation_name,size_t attr_num,const char attribute_name[MAX_NUM][MAX_NUM], Value value[MAX_NUM],
     Condition conditions[], size_t condition_num)
 {
+  updates->attr_num = attr_num;
+  for (size_t i = 0; i < attr_num;i++){
+    updates->value[i] = value[i];
+    updates->attribute_name[i] = strdup(attribute_name[i]);
+  }
   updates->relation_name = strdup(relation_name);
-  updates->attribute_name = strdup(attribute_name);
-  updates->value = *value;
-
-  assert(condition_num <= sizeof(updates->conditions) / sizeof(updates->conditions[0]));
   for (size_t i = 0; i < condition_num; i++) {
     updates->conditions[i] = conditions[i];
   }
@@ -245,11 +246,13 @@ void updates_init(Updates *updates, const char *relation_name, const char *attri
 void updates_destroy(Updates *updates)
 {
   free(updates->relation_name);
-  free(updates->attribute_name);
   updates->relation_name = nullptr;
-  updates->attribute_name = nullptr;
-
-  value_destroy(&updates->value);
+  for (size_t i = 0; i < updates->attr_num;i++){
+    free(updates->attribute_name[i]);
+    updates->attribute_name[i] = nullptr;
+    value_destroy(&updates->value[i]);
+  }
+  updates->attr_num = 0;
 
   for (size_t i = 0; i < updates->condition_num; i++) {
     condition_destroy(&updates->conditions[i]);
