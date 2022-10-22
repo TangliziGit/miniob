@@ -418,7 +418,7 @@ select_attr:
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
     }
     | function attr_list {
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &1);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $1);
     }
     ;
 
@@ -443,7 +443,7 @@ function:
 	}
 	| ID LBRACE value RBRACE {
 		Value *value = &CONTEXT->values[CONTEXT->value_length - 1];
-		function_init_attr(&CONTEXT->functions[CONTEXT->function_length++], $1, &attr);
+		function_init_value(&CONTEXT->functions[CONTEXT->function_length++], $1, value);
 		$$=&CONTEXT->functions[CONTEXT->function_length-1];
 	}
 	;
@@ -465,7 +465,7 @@ attr_list: %empty
         		// CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length++].relation_name=$2;
     }
     | COMMA function attr_list {
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &2);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $2);
     }
     ;
 

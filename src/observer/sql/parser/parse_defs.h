@@ -44,22 +44,22 @@ typedef struct {
     char *attribute_name;  // attribute name              属性名
   };
 
-  bool is_value;
-  Value *value;
-  RelAttr *attribute;
+  int is_value;
+  struct Value *value;
+  struct RelAttr *attribute;
 } Parameter;
 
 typedef struct {
   char *function_name;
   size_t parameter_num;
   Parameter parameters[MAX_NUM];
-} Function;
+} FunctionAttr;
 
 //属性结构体
 typedef struct {
   char *relation_name;   // relation name (may be NULL) 表名
   char *attribute_name;  // attribute name              属性名
-  Function *function;
+  FunctionAttr *function;
 } RelAttr;
 
 typedef enum {
@@ -223,7 +223,7 @@ extern "C" {
 
 void function_init_attr(RelAttr *function, const char *function_name, RelAttr *relation_attr);
 void function_init_value(RelAttr *function, const char *function_name, Value *value);
-void function_destroy(Function *function);
+void function_destroy(FunctionAttr *function);
 
 void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const char *attribute_name);
 void relation_attr_destroy(RelAttr *relation_attr);

@@ -26,7 +26,7 @@ void function_init_attr(RelAttr *function, const char *function_name, RelAttr *r
   *function = {
       .relation_name = nullptr,
       .attribute_name = nullptr,
-      .function = new Function {
+      .function = new FunctionAttr{
           .function_name = strdup(function_name),
           .parameter_num = 1,
           .parameters = {
@@ -47,7 +47,7 @@ void function_init_value(RelAttr *function, const char *function_name, Value *va
   *function = {
       .relation_name = nullptr,
       .attribute_name = nullptr,
-      .function = new Function {
+      .function = new FunctionAttr{
           .function_name = strdup(function_name),
           .parameter_num = 1,
           .parameters = {
@@ -64,7 +64,7 @@ void function_init_value(RelAttr *function, const char *function_name, Value *va
   };
 }
 
-void function_destroy(Function *function) {
+void function_destroy(FunctionAttr *function) {
   if (function == nullptr) return;
 
   free(function->function_name);
@@ -72,10 +72,10 @@ void function_destroy(Function *function) {
   for (size_t i = 0; i < function->parameter_num; i++) {
     free(function->parameters[i].value->data);
     function->parameters[i].value->data = nullptr;
-    free(function->parameters[i].attribute->attribute_name);
-    function->parameters[i].attribute->attribute_name = nullptr;
-    free(function->parameters[i].attribute->relation_name);
-    function->parameters[i].attribute->relation_name = nullptr;
+    // free(function->parameters[i].attribute->attribute_name);
+    // function->parameters[i].attribute->attribute_name = nullptr;
+    // free(function->parameters[i].attribute->relation_name);
+    // function->parameters[i].attribute->relation_name = nullptr;
   }
 }
 

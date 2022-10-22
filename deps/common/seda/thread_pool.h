@@ -132,7 +132,7 @@ protected:
 private:
   /**
    * Internal thread control function
-   * Function which contains the control loop for each service thread.
+   * FunctionAttr which contains the control loop for each service thread.
    * Should not be called except when a thread is created.
    */
   static void *run_thread(void *pool_ptr);

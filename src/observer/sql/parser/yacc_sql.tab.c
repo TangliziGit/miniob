@@ -1738,7 +1738,7 @@ yyreduce:
   case 68: /* select_attr: function attr_list  */
 #line 420 "yacc_sql.y"
                          {
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &1);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, (yyvsp[-1].function1));
     }
 #line 1744 "yacc_sql.tab.c"
     break;
@@ -1780,7 +1780,7 @@ yyreduce:
 #line 444 "yacc_sql.y"
                                  {
 		Value *value = &CONTEXT->values[CONTEXT->value_length - 1];
-		function_init_attr(&CONTEXT->functions[CONTEXT->function_length++], (yyvsp[-3].string), &attr);
+		function_init_value(&CONTEXT->functions[CONTEXT->function_length++], (yyvsp[-3].string), value);
 		(yyval.function1)=&CONTEXT->functions[CONTEXT->function_length-1];
 	}
 #line 1787 "yacc_sql.tab.c"
@@ -1813,7 +1813,7 @@ yyreduce:
   case 76: /* attr_list: COMMA function attr_list  */
 #line 467 "yacc_sql.y"
                                {
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &2);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, (yyvsp[-1].function1));
     }
 #line 1819 "yacc_sql.tab.c"
     break;

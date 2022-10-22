@@ -30,6 +30,11 @@ public:
     : attr_type_(attr_type), data_(data)
   {}
 
+  explicit TupleCell(int number)
+      : attr_type_(INTS), data_((char *)new int{number}) {}
+  explicit TupleCell(float number)
+      : attr_type_(FLOATS), data_((char *)new float{number}) {}
+
   void set_type(AttrType type) { this->attr_type_ = type; }
   void set_length(int length) { this->length_ = length; }
   void set_data(char *data) { this->data_ = data; }
@@ -41,7 +46,7 @@ public:
 
   bool like(const TupleCell &other) const;
 
-  const char *data() const
+  char *data() const
   {
     return data_;
   }

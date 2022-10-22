@@ -13,7 +13,7 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "sql/expr/tuple.h"
-
+#include "expression.h"
 
 RC FieldExpr::get_value(const Tuple &tuple, TupleCell &cell) const
 {
@@ -24,4 +24,14 @@ RC ValueExpr::get_value(const Tuple &tuple, TupleCell & cell) const
 {
   cell = tuple_cell_;
   return RC::SUCCESS;
+}
+
+RC FunctionExpr::get_value(const Tuple &tuple, TupleCell &result) const
+{
+  auto args = tuple.extract_cells(fields_);
+  if (args.second != SUCCESS) {
+    return args.second;
+  }
+
+  return function_->execute(args.first, result);
 }

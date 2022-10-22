@@ -243,7 +243,7 @@ const std::string &Threadpool::get_name()
 
 /**
  * Internal thread control function
- * Function which contains the control loop for each service thread.
+ * FunctionAttr which contains the control loop for each service thread.
  * Should not be called except when a thread is created.
  */
 void *Threadpool::run_thread(void *pool_ptr)

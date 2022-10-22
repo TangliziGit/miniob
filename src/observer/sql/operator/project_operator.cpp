@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/project_operator.h"
 #include "storage/record/record.h"
 #include "storage/common/table.h"
+#include "sql/function/register.h"
 
 RC ProjectOperator::open()
 {
@@ -50,13 +51,46 @@ Tuple *ProjectOperator::current_tuple()
   return &tuple_;
 }
 
-void ProjectOperator::add_projection(const Table *table, const FieldMeta *field_meta)
+RC ProjectOperator::add_projection(const AbstractField *abstract_field)
 {
   // 对单表来说，展示的(alias) 字段总是字段名称，
   // 对多表查询来说，展示的alias 需要带表名字
-  TupleCellSpec *spec = new TupleCellSpec(new FieldExpr(table, field_meta));
-  spec->set_alias(field_meta->name());
-  tuple_.add_cell_spec(spec);
+  switch (abstract_field->type()) {
+    case FieldType::FIELD: {
+      auto field = dynamic_cast<const Field *>(abstract_field);
+      auto *spec = new TupleCellSpec(new FieldExpr(field->table(), field->meta()));
+      spec->set_alias(field->name());
+      tuple_.add_cell_spec(spec);
+      break;
+    }
+    case FieldType::VALUE_FIELD: {
+      auto field = dynamic_cast<const ValueField *>(abstract_field);
+      auto *spec = new TupleCellSpec(new ValueExpr(*field->value()));
+      spec->set_alias(field->name());
+      tuple_.add_cell_spec(spec);
+      break;
+    }
+    case FieldType::FUNCTION_FIELD: {
+      auto field = dynamic_cast<const FunctionField *>(abstract_field);
+      if (FunctionRegister::is_aggregation(field->function_name())) {
+        // you should not apply aggregation in project operator
+        return RC::MISUSE;
+      }
+
+      auto result = FunctionRegister::create(field->function_name());
+      if (result.second != RC::SUCCESS) {
+        return result.second;
+      }
+
+      auto *spec = new TupleCellSpec(new FunctionExpr(field->fields(), result.first));
+      spec->set_alias(field->name());
+      tuple_.add_cell_spec(spec);
+      break;
+    }
+    default:
+      return RC::MISMATCH;
+  }
+  return RC::SUCCESS;
 }
 
 RC ProjectOperator::tuple_cell_spec_at(int index, const TupleCellSpec *&spec) const

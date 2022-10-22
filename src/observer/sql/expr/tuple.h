@@ -70,6 +70,30 @@ public:
   virtual RC  find_cell(const Field &field, TupleCell &cell) const = 0;
 
   virtual RC  cell_spec_at(int index, const TupleCellSpec *&spec) const = 0;
+
+  // extract_cells just for function arguments extracting
+  std::pair<Function::Arguments, RC> extract_cells(const std::vector<AbstractField *>& fields) const {
+    Function::Arguments args;
+    for (const auto field: fields) {
+      TupleCell cell;
+      switch (field->type()) {
+        case FieldType::FIELD:
+          this->find_cell(*dynamic_cast<Field *>(field), cell);
+          break;
+        case FieldType::VALUE_FIELD: {
+          auto value = dynamic_cast<ValueField *>(field)->value();
+          cell.set_type(value->type);
+          cell.set_data((char *)value->data);
+          break;
+        }
+        default:
+          // recursive function call is not necessary
+          return { {}, RC::MISMATCH };
+      }
+      args.push_back(cell);
+    }
+    return { {}, RC::SUCCESS };
+  }
 };
 
 class RowTuple : public Tuple
