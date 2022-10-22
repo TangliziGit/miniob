@@ -88,7 +88,7 @@ public:
   RC commit_update(Trx *trx, const RID &rid);
   RC rollback_insert(Trx *trx, const RID &rid);
   RC rollback_delete(Trx *trx, const RID &rid);
-  // TODO: rollback_update
+  RC rollback_update(Trx *trx, const RID &rid,const Record&pre_record);
 
 private:
   RC scan_record(
@@ -112,6 +112,7 @@ private:
 private:
   RC init_record_handler(const char *base_dir);
   RC make_record(int value_num, const Value *values, char *&record_out);
+  RC copy_record(Record *record_in, Record *record_out);
 
 public:
   Index *find_index(const char *index_name) const;

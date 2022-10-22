@@ -653,6 +653,9 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event)
 
   RC rc = update_oper.open();
   if (rc != RC::SUCCESS) {
+    if(trx!=nullptr){
+      trx->rollback();
+    }
     session_event->set_response("FAILURE\n");
   } else {
     session_event->set_response("SUCCESS\n");
@@ -671,8 +674,8 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event)
       //   return rc;
       // }
 
-      // trx->next_current_id();
-      // session_event->set_response("SUCCESS\n");
+      trx->next_current_id();
+      session_event->set_response("SUCCESS\n");
     }
   }
   return rc;
