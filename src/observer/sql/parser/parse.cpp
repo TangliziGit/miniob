@@ -72,6 +72,7 @@ void function_destroy(FunctionAttr *function) {
   for (size_t i = 0; i < function->parameter_num; i++) {
     free(function->parameters[i].value->data);
     function->parameters[i].value->data = nullptr;
+
     // free(function->parameters[i].attribute->attribute_name);
     // function->parameters[i].attribute->attribute_name = nullptr;
     // free(function->parameters[i].attribute->relation_name);
@@ -87,6 +88,7 @@ void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const
     relation_attr->relation_name = nullptr;
   }
   relation_attr->attribute_name = strdup(attribute_name);
+  relation_attr->function = nullptr;
 }
 
 void relation_attr_destroy(RelAttr *relation_attr)
