@@ -741,7 +741,7 @@ RC Table::update_record(Trx *trx, Record *record, const std::vector<const char *
   // if(trx != nullptr){
   //   trx->init_trx_info(this, *record);
   // }
-  rc = record_handler_->update_record(record);
+    rc = record_handler_->update_record(record);
 
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to update record (rid=%d.%d). rc=%d:%s",
