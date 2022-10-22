@@ -114,7 +114,7 @@ RC Trx::delete_record(Table *table, Record *record)
   return rc;
 }
 
-RC Trx::update_record(Table *table, Record *record)
+RC Trx::update_record(Table *table, Record *record,Record * pre_record)
 {
   RC rc = RC::SUCCESS;
 
@@ -124,7 +124,7 @@ RC Trx::update_record(Table *table, Record *record)
       return RC::GENERIC_ERROR;
     }
   }
-  insert_operation(table, Operation::Type::UPDATE, record->rid());
+  insert_operation(table, Operation::Type::UPDATE, record->rid(),*pre_record);
   return rc;
 }
 
@@ -162,10 +162,10 @@ Operation *Trx::find_operation(Table *table, const RID &rid)
   return const_cast<Operation *>(&(*operation_iter));
 }
 
-void Trx::insert_operation(Table *table, Operation::Type type, const RID &rid)
+void Trx::insert_operation(Table *table, Operation::Type type, const RID &rid,Record pre_record)
 {
   OperationSet &table_operations = operations_[table];
-  table_operations.emplace(type, rid);
+  table_operations.emplace(type, rid, pre_record);
 }
 
 void Trx::delete_operation(Table *table, const RID &rid)
@@ -209,7 +209,7 @@ RC Trx::commit()
                 "Failed to commit delete operation. rid=%d.%d, rc=%d:%s", rid.page_num, rid.slot_num, rc, strrc(rc));
           }
         } break;
-        case Operation::Type::UPDATE: {
+          case Operation::Type::UPDATE: {
           rc = table->commit_update(this, rid);
           if (rc != RC::SUCCESS) {
             // handle rc
@@ -250,8 +250,16 @@ RC Trx::rollback()
                 "Failed to rollback insert operation. rid=%d.%d, rc=%d:%s", rid.page_num, rid.slot_num, rc, strrc(rc));
           }
         } break;
-        case Operation::Type::DELETE: {
-          rc = table->rollback_delete(this, rid);
+        // case Operation::Type::DELETE: {
+        //   rc = table->rollback_delete(this, rid);
+        //   if (rc != RC::SUCCESS) {
+        //     // handle rc
+        //     LOG_ERROR(
+        //         "Failed to rollback delete operation. rid=%d.%d, rc=%d:%s", rid.page_num, rid.slot_num, rc, strrc(rc));
+        //   }
+        // } break;
+        case Operation::Type::UPDATE: {
+          rc = table->rollback_update(this, rid,operation.pre_record());
           if (rc != RC::SUCCESS) {
             // handle rc
             LOG_ERROR(
