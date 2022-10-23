@@ -73,13 +73,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
 
     // set function field
     if (relation_attr.function != nullptr) {
-      auto iter = table_map.find(relation_attr.relation_name);
-      if (iter == table_map.end()) {
-        return RC::SCHEMA_FIELD_MISSING;
-      }
-
-      Table *table = iter->second;
-      auto result = FunctionField::make(table, table_map, relation_attr.function);
+      auto result = FunctionField::make(tables[0], table_map, relation_attr.function);
       if (result.second != RC::SUCCESS) {
         return result.second;
       }
