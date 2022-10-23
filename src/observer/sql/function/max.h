@@ -21,6 +21,10 @@ public:
         return { new TupleCell{INT32_MIN} };
       case FLOATS:
         return { new TupleCell{std::numeric_limits<float>::min()} };
+      case DATES: {
+        auto data = new int{0};
+        return { new TupleCell{DATES, (char *)data} };
+      }
       default:
         LOG_ERROR("unsupported attribute type in min function: %d",
                   fields_[0]->attr_type());

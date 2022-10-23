@@ -230,22 +230,3 @@ AttrType cast_target(void *data, AttrType type) {
   chars_to_number((const char *)data, new_type);
   return new_type;
 }
-
-std::pair<void *, RC> datacopy(void *data, AttrType type) {
-  void *res = nullptr;
-  // TODO(chunxu): add text type
-  switch (type) {
-    case CHARS:
-      res = strdup((char *)data);
-      return { res, SUCCESS };
-    case INTS:
-      res = new int{*(int *) data};
-      return { res, SUCCESS };
-    case FLOATS:
-      res = new float{*(float *) data};
-      return { res, SUCCESS };
-    default:
-      break;
-  }
-  return { nullptr, MISMATCH };
-}

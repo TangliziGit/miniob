@@ -200,6 +200,7 @@ std::pair<TupleCell, RC> TupleCell::min(const TupleCell &other) const {
       }
       return { rhs, SUCCESS };
     }
+    case DATES:
     case INTS: {
       int value = std::min(*(int *)lhs.data_, *(int *)rhs.data_);
       memcpy(lhs.data_, &value, sizeof(value));
@@ -232,6 +233,7 @@ std::pair<TupleCell, RC> TupleCell::max(const TupleCell &other) const {
       }
       return { lhs, SUCCESS };
     }
+    case DATES:
     case INTS: {
       int value = std::max(*(int *)lhs.data_, *(int *)rhs.data_);
       memcpy(lhs.data_, &value, sizeof(value));
