@@ -19,6 +19,8 @@ typedef struct ParserContext {
   Value values[MAX_NUM];
   size_t function_length;
   RelAttr functions[MAX_NUM];
+  size_t parameter_length;
+  Parameter parameters[MAX_NUM];
   size_t insert_num;
   size_t insert_value_length[MAX_NUM];
   Value insert_values[MAX_NUM][MAX_NUM];
@@ -423,30 +425,55 @@ select_attr:
     ;
 
 function:
-	ID LBRACE ID RBRACE {
-		RelAttr attr;
-		relation_attr_init(&attr, NULL, $3);
-		function_init_attr(&CONTEXT->functions[CONTEXT->function_length++], $1, &attr);
-		$$=&CONTEXT->functions[CONTEXT->function_length-1];
-	}
-	| ID LBRACE ID DOT ID RBRACE {
-		RelAttr attr;
-		relation_attr_init(&attr, $3, $5);
-		function_init_attr(&CONTEXT->functions[CONTEXT->function_length++], $1, &attr);
-		$$=&CONTEXT->functions[CONTEXT->function_length-1];
-	}
-	| ID LBRACE STAR RBRACE {
-		RelAttr attr;
-		relation_attr_init(&attr, NULL, "*");
-		function_init_attr(&CONTEXT->functions[CONTEXT->function_length++], $1, &attr);
-		$$=&CONTEXT->functions[CONTEXT->function_length-1];
-	}
-	| ID LBRACE value RBRACE {
-		Value *value = &CONTEXT->values[CONTEXT->value_length - 1];
-		function_init_value(&CONTEXT->functions[CONTEXT->function_length++], $1, value);
+	ID LBRACE function_attr RBRACE {
+		function_init(&CONTEXT->functions[CONTEXT->function_length++], &CONTEXT->parameters,
+			CONTEXT->parameter_length, $1);
+		CONTEXT->parameter_length = 0;
 		$$=&CONTEXT->functions[CONTEXT->function_length-1];
 	}
 	;
+
+function_attr: %empty
+	| ID function_attr_list {
+		RelAttr attr;
+		relation_attr_init(&attr, NULL, $1);
+		parameter_init_attr(&CONTEXT->parameters[CONTEXT->parameter_length++], &attr);
+	}
+	| ID DOT ID function_attr_list {
+		RelAttr attr;
+		relation_attr_init(&attr, $1, $3);
+		parameter_init_attr(&CONTEXT->parameters[CONTEXT->parameter_length++], &attr);
+	}
+	| STAR function_attr_list {
+		RelAttr attr;
+		relation_attr_init(&attr, NULL, "*");
+		parameter_init_attr(&CONTEXT->parameters[CONTEXT->parameter_length++], &attr);
+	}
+	| value function_attr_list {
+		Value *value = &CONTEXT->values[CONTEXT->value_length - 1];
+		parameter_init_value(&CONTEXT->parameters[CONTEXT->parameter_length++], value);
+	}
+
+function_attr_list: %empty
+	| COMMA ID function_attr_list {
+		RelAttr attr;
+		relation_attr_init(&attr, NULL, $2);
+		parameter_init_attr(&CONTEXT->parameters[CONTEXT->parameter_length++], &attr);
+	}
+	| COMMA ID DOT ID function_attr_list {
+		RelAttr attr;
+		relation_attr_init(&attr, $2, $4);
+		parameter_init_attr(&CONTEXT->parameters[CONTEXT->parameter_length++], &attr);
+	}
+	| COMMA STAR function_attr_list {
+		RelAttr attr;
+		relation_attr_init(&attr, NULL, "*");
+		parameter_init_attr(&CONTEXT->parameters[CONTEXT->parameter_length++], &attr);
+	}
+	| COMMA value function_attr_list {
+		Value *value = &CONTEXT->values[CONTEXT->value_length - 1];
+		parameter_init_value(&CONTEXT->parameters[CONTEXT->parameter_length++], value);
+	}
 
 attr_list: %empty 
     /* empty */

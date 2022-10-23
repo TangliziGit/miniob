@@ -221,8 +221,9 @@ typedef struct Query {
 extern "C" {
 #endif  // __cplusplus
 
-void function_init_attr(RelAttr *function, const char *function_name, RelAttr *relation_attr);
-void function_init_value(RelAttr *function, const char *function_name, Value *value);
+void parameter_init_attr(Parameter *parameter, RelAttr *attr);
+void parameter_init_value(Parameter *parameter, Value *value);
+void function_init(RelAttr *function, Parameter *parameters, size_t parameter_length, const char *function_name);
 void function_destroy(FunctionAttr *function);
 
 void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const char *attribute_name);

@@ -21,6 +21,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/common/table.h"
 #include "storage/common/field_meta.h"
 #include "sql/expr/tuple_cell.h"
+#include "common/lang/string.h"
 
 enum class FieldType {
   NONE,
@@ -33,6 +34,7 @@ class AbstractField {
 public:
   virtual FieldType type() const { return FieldType::NONE; }
   virtual const char *name() const { return "NONE"; }
+  virtual AttrType attr_type() const { return UNDEFINED; }
 };
 
 class Field : public AbstractField {
@@ -41,13 +43,13 @@ public:
   Field(const Table *table, const FieldMeta *field)
       : table_(table), field_(field) {}
 
-  FieldType type() const override   { return FieldType::FIELD; }
-  const char *name() const override { return field_name(); }
+  FieldType type() const override     { return FieldType::FIELD; }
+  const char *name() const override   { return field_name(); }
+  AttrType attr_type() const override { return field_->type(); }
 
 public:
   const Table *table() const              { return table_; }
   const FieldMeta *meta() const           { return field_; }
-  AttrType attr_type() const              { return field_->type(); }
   const char *table_name() const          { return table_->name(); }
   const char *field_name() const          { return field_->name(); }
 
@@ -65,6 +67,7 @@ public:
 
   FieldType type() const override { return FieldType::VALUE_FIELD; }
   const char *name() const override { return name_; }
+  AttrType attr_type() const override { return value_->type; }
 
   Value *value() const { return value_; }
 
@@ -80,13 +83,17 @@ public:
 
   FieldType type() const override { return FieldType::FUNCTION_FIELD; }
   const char *name() const override { return name_; }
+  // TODO(chunxu): function field attr type will not be used now
+  AttrType attr_type() const override { return UNDEFINED; }
 
   const char *function_name() const { return function_name_; }
   std::vector<AbstractField *> fields() const { return fields_; }
 
 public:
-  static std::pair<FunctionField *, RC>
-      make(std::unordered_map<std::string, Table *> table_map, FunctionAttr *function_attr) {
+  static std::pair<FunctionField *, RC> make(
+      Table *default_table,
+      std::unordered_map<std::string, Table *> table_map,
+      FunctionAttr *function_attr) {
     std::vector<AbstractField*> fields;
     std::stringstream name;
     std::stringstream value_name;
@@ -110,13 +117,30 @@ public:
         const auto &table_name = attr->relation_name;
         const auto &field_name = attr->attribute_name;
 
-        auto iter = table_map.find(table_name);
-        if (iter == table_map.end()) {
-          LOG_WARN("no such table in from list: %s", table_name);
-          return { nullptr, RC::SCHEMA_FIELD_MISSING };
+        if (common::is_blank(table_name) && 0 == strcmp(field_name, "*")) {
+          if (0 != strcmp(function_attr->function_name, "count")) {
+            return { nullptr, RC::INVALID_ARGUMENT };
+          }
+
+          auto value = new Value{ INTS, new int(1) };
+          auto field = new ValueField{value, "*"};
+          fields.push_back(field);
+          name << field->name();
+          continue;
         }
 
-        Table *table = iter->second;
+        Table *table = nullptr;
+        if (table_name == nullptr) {
+          table = default_table;
+        } else {
+          auto iter = table_map.find(table_name);
+          if (iter == table_map.end()) {
+            LOG_WARN("no such table in from list: %s", table_name);
+            return { nullptr, RC::SCHEMA_FIELD_MISSING };
+          }
+          table = iter->second;
+        }
+
         const FieldMeta *field_meta = table->table_meta().field(field_name);
         if (nullptr == field_meta) {
           LOG_WARN("no such field. field=%s.%s", table->name(), field_name);

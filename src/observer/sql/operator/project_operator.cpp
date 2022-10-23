@@ -77,7 +77,7 @@ RC ProjectOperator::add_projection(const AbstractField *abstract_field)
         return RC::MISUSE;
       }
 
-      auto result = FunctionRegister::create(field->function_name());
+      auto result = FunctionRegister::create(field->function_name(), field->fields());
       if (result.second != RC::SUCCESS) {
         return result.second;
       }

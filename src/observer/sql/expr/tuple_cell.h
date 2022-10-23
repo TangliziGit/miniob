@@ -14,9 +14,11 @@ See the Mulan PSL v2 for more details. */
 
 #pragma once
 
+#include <cstring>
 #include <iostream>
 #include "storage/common/table.h"
 #include "storage/common/field_meta.h"
+#include "util/comparator.h"
 
 class TupleCell
 {
@@ -45,6 +47,12 @@ public:
   int compare(const TupleCell &other) const;
 
   bool like(const TupleCell &other) const;
+
+  TupleCell cast_to(const TupleCell &target) const;
+  std::pair<TupleCell, RC> add(const TupleCell &rhs) const;
+  std::pair<TupleCell, RC> div(const TupleCell &rhs) const;
+  std::pair<TupleCell, RC> min(const TupleCell &rhs) const;
+  std::pair<TupleCell, RC> max(const TupleCell &rhs) const;
 
   char *data() const
   {

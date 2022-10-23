@@ -43,7 +43,7 @@ public:
       if (field_to_index.count(field->name()) == 0) {
         return RC::MISMATCH;
       }
-      select_field_to_index_[i] = field_to_index[field->name()];
+      select_field_to_index_.push_back(field_to_index[field->name()]);
     }
 
     // build aggregation functions
@@ -52,7 +52,7 @@ public:
         return RC::MISUSE;
       }
 
-      auto result = FunctionRegister::create(field->function_name());
+      auto result = FunctionRegister::create(field->function_name(), field->fields());
       if (result.second != RC::SUCCESS) {
         return result.second;
       }
@@ -85,17 +85,19 @@ public:
       return rc;
     }
 
+    next_iter_ = states_.begin();
     return RC::SUCCESS;
   };
 
   RC next() override {
-    auto iter = states_.begin();
+    auto &iter = next_iter_;
     while (iter != states_.end()) {
       AggKey key = iter->first;
       AggStates states = iter->second;
 
       // TODO(chunxu): check having cause
       tuple_ = make_tuple(key, states);
+      iter++;
       return SUCCESS;
     }
     return RECORD_EOF;
@@ -122,8 +124,9 @@ private:
     RC rc;
     if (states_.count(key) == 0) {
       states_[key] = {};
-      for (const auto &func: functions_)
+      for (auto & func : functions_) {
         states_[key].push_back(func->initialState());
+      }
     }
 
     AggStates &states = states_[key];
@@ -148,7 +151,7 @@ private:
 
     for (const size_t index: select_field_to_index_) {
       ValueExpr *value = nullptr;
-      if (index <= key_size) {
+      if (index < key_size) {
         value = new ValueExpr(*key[index]);
       } else {
         const size_t i = index - key_size;
@@ -164,6 +167,8 @@ private:
   }
 
 private:
+  std::map<AggKey, AggStates>::iterator next_iter_;
+
   ProjectTuple *tuple_{};
   std::map<AggKey, AggStates> states_;
 

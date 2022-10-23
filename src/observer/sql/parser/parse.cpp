@@ -22,46 +22,38 @@ RC parse(char *st, Query *sqln);
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
-void function_init_attr(RelAttr *function, const char *function_name, RelAttr *relation_attr) {
-  *function = {
-      .relation_name = nullptr,
-      .attribute_name = nullptr,
-      .function = new FunctionAttr{
-          .function_name = strdup(function_name),
-          .parameter_num = 1,
-          .parameters = {
-              {
-                  .is_value = true,
-                  .value = nullptr,
-                  .attribute = new Parameter::RelAttr {
-                      .relation_name = relation_attr->relation_name,
-                      .attribute_name = relation_attr->attribute_name,
-                  }
-              }
-          }
-      }
+void parameter_init_attr(Parameter *parameter, RelAttr *attr) {
+  parameter->is_value = 0;
+  parameter->value = nullptr;
+  parameter->attribute = new Parameter::RelAttr {
+      .relation_name = attr->relation_name,
+      .attribute_name = attr->attribute_name,
   };
 }
 
-void function_init_value(RelAttr *function, const char *function_name, Value *value) {
+void parameter_init_value(Parameter *parameter, Value *value) {
+  parameter->is_value = 0;
+  parameter->attribute = nullptr;
+  parameter->value = new Parameter::Value {
+      .type = value->type,
+      .data = value->data,
+  };
+}
+
+void function_init(RelAttr *function, Parameter *parameters, size_t parameter_length, const char *function_name) {
   *function = {
       .relation_name = nullptr,
       .attribute_name = nullptr,
       .function = new FunctionAttr{
           .function_name = strdup(function_name),
-          .parameter_num = 1,
-          .parameters = {
-              {
-                  .is_value = true,
-                  .value = new Parameter::Value {
-                      .type = value->type,
-                      .data = value->data
-                  },
-                  .attribute = nullptr
-              }
-          }
+          .parameter_num = parameter_length,
+          .parameters = {},
       }
   };
+
+  for (size_t i=0; i<parameter_length; i++) {
+    function->function->parameters[i] = parameters[i];
+  }
 }
 
 void function_destroy(FunctionAttr *function) {
@@ -70,8 +62,8 @@ void function_destroy(FunctionAttr *function) {
   free(function->function_name);
   function->function_name = nullptr;
   for (size_t i = 0; i < function->parameter_num; i++) {
-    free(function->parameters[i].value->data);
-    function->parameters[i].value->data = nullptr;
+    // free(function->parameters[i].value->data);
+    // function->parameters[i].value->data = nullptr;
 
     // free(function->parameters[i].attribute->attribute_name);
     // function->parameters[i].attribute->attribute_name = nullptr;

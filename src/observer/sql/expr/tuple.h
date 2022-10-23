@@ -92,7 +92,7 @@ public:
       }
       args.push_back(cell);
     }
-    return { {}, RC::SUCCESS };
+    return { args, RC::SUCCESS };
   }
 };
 
@@ -229,11 +229,17 @@ public:
     if (index < 0 || index >= static_cast<int>(speces_.size())) {
       return RC::GENERIC_ERROR;
     }
+
+    const TupleCellSpec *spec = speces_[index];
+    if (spec->expression()->type() == ExprType::VALUE) {
+      RowTuple tmp;
+      return spec->expression()->get_value(tmp, cell);
+    }
+
     if (tuple_ == nullptr) {
       return RC::GENERIC_ERROR;
     }
 
-    const TupleCellSpec *spec = speces_[index];
     return spec->expression()->get_value(*tuple_, cell);
   }
 
