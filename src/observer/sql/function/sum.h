@@ -37,7 +37,12 @@ protected:
 
   TupleCell calculate(const std::vector<TupleCell> &argument) override {
     // TODO(chunxu): check if null
-    state_[0]->add(argument[0]);
+    auto pair = state_[0]->add(argument[0]);
+    if (pair.second != SUCCESS) {
+      setRC(pair.second);
+      return *state_[0];
+    }
+    *state_[0] = pair.first;
     return *state_[0];
   }
 

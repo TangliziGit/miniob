@@ -59,8 +59,8 @@ void function_init(RelAttr *function, Parameter *parameters, size_t parameter_le
 void function_destroy(FunctionAttr *function) {
   if (function == nullptr) return;
 
-  free(function->function_name);
-  function->function_name = nullptr;
+  // free(function->function_name);
+  // function->function_name = nullptr;
   for (size_t i = 0; i < function->parameter_num; i++) {
     // free(function->parameters[i].value->data);
     // function->parameters[i].value->data = nullptr;
