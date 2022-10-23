@@ -13,16 +13,7 @@ public:
 
   State initialState() override {
     // sum and count
-    switch (fields_[0]->attr_type()) {
-      case INTS:
-        return { new TupleCell{(int)0}, new TupleCell{(int)0} };
-      case FLOATS:
-        return { new TupleCell{(float)0}, new TupleCell{(int)0} };
-      default:
-        LOG_ERROR("unsupported attribute type in avg function: %d",
-            fields_[0]->attr_type());
-    }
-    return { new TupleCell{(int)0}, new TupleCell{(int)0} };
+    return { new TupleCell{(float)0}, new TupleCell{(int)0} };
   }
 
   TupleCell settle(const State &state) override {
@@ -47,12 +38,8 @@ protected:
     auto count = (int *)state_[1]->data();
     (*count)++;
 
-    float sum;
-    if (sum_cell.first.attr_type() == INTS) {
-      sum = (float)*(int *) sum_cell.first.data();
-    } else {
-      sum = *(float *) sum_cell.first.data();
-    }
+    float sum = *(float *) sum_cell.first.data();
+    state_[0]->set_data((char *)new float{sum});
 
     TupleCell cell{ sum / (float)(*count) };
     return cell;
