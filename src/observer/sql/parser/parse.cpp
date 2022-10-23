@@ -309,7 +309,7 @@ void create_index_init(
   create_index->index_name = strdup(index_name);
   create_index->relation_name = strdup(relation_name);
   create_index->attribute_count = atr_num;
-  for (auto i = 0; i < atr_num;i++){
+  for (size_t i = 0; i < atr_num;i++){
     create_index->attribute_name[i] = strdup(attr_name[i]);
   }
   create_index->is_unique = is_unique;
@@ -325,7 +325,7 @@ void create_index_destroy(CreateIndex *create_index)
 
   create_index->index_name = nullptr;
   create_index->relation_name = nullptr;
-  for (auto i = 0; i < create_index->attribute_count;i++){
+  for (size_t i = 0; i < create_index->attribute_count;i++){
     create_index->attribute_name[i] = nullptr;
   }
   create_index->attribute_count = 0;

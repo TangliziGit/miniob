@@ -162,17 +162,7 @@ private:
   std::vector<TupleCellSpec *> speces_;
 };
 
-/*
-class CompositeTuple : public Tuple
-{
-public:
-  int cell_num() const override; 
-  RC  cell_at(int index, TupleCell &cell) const = 0;
-private:
-  int cell_num_ = 0;
-  std::vector<Tuple *> tuples_;
-};
-*/
+
 
 class ProjectTuple : public Tuple
 {
@@ -228,4 +218,71 @@ public:
 private:
   std::vector<TupleCellSpec *> speces_;
   Tuple *tuple_ = nullptr;
+};
+
+class MulProjectTuple:public Tuple
+{
+public:
+  MulProjectTuple() = default;
+  virtual ~MulProjectTuple()
+  {
+    for (TupleCellSpec *spec : speces_) {
+      delete spec;
+    }
+    speces_.clear();
+  }
+
+  void set_tuple(const std::vector<Tuple *>& tuple)
+  {
+    this->tuples_ = &tuple;
+  }
+  void set_name_map(const std::map<std::string, int> &name_map)
+  {
+    this->name_map_ = name_map;
+  }
+
+  void add_cell_spec(TupleCellSpec *spec)
+  {
+    speces_.push_back(spec);
+  }
+  int cell_num() const override
+  {
+    return speces_.size();
+  }
+
+  RC cell_at(int index, TupleCell &cell) const override
+  {
+    if (index < 0 || index >= static_cast<int>(speces_.size())) {
+      return RC::GENERIC_ERROR;
+    }
+    if (tuples_ == nullptr) {
+      return RC::GENERIC_ERROR;
+    }
+
+    const TupleCellSpec *spec = speces_[index];
+    int idx = 0;
+    if(tuples_->size()>1 && spec->expression()->type() == ExprType::FIELD ){
+      const std::string &name = std::string(reinterpret_cast<FieldExpr *>(spec->expression())->table_name());
+      idx = name_map_.find(name)->second;
+    }
+    return spec->expression()->get_value(*(*tuples_)[idx], cell);
+  }
+
+  RC find_cell(const Field &field, TupleCell &cell) const override
+  {
+    int idx = name_map_.find(field.table_name())->second;
+    return tuples_->at(idx)->find_cell(field, cell);
+  }
+  RC cell_spec_at(int index, const TupleCellSpec *&spec) const override
+  {
+    if (index < 0 || index >= static_cast<int>(speces_.size())) {
+      return RC::NOTFOUND;
+    }
+    spec = speces_[index];
+    return RC::SUCCESS;
+  }
+private:
+  std::vector<TupleCellSpec *> speces_;
+  const std::vector<Tuple *> *tuples_ = nullptr;
+  std::map<std::string, int> name_map_;
 };

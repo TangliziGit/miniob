@@ -33,6 +33,9 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/delete_operator.h"
 #include "sql/operator/update_operator.h"
 #include "sql/operator/project_operator.h"
+#include "sql/operator/multi_table_operator.h"
+#include "sql/operator/multi_table_predicate_operator.h"
+#include "sql/operator/multi_table_project_operator.h"
 #include "sql/stmt/stmt.h"
 #include "sql/stmt/select_stmt.h"
 #include "sql/stmt/update_stmt.h"
@@ -253,6 +256,27 @@ void print_tuple_header(std::ostream &os, const ProjectOperator &oper)
     os << '\n';
   }
 }
+
+void print_tuple_header(std::ostream &os, const MultiTableProjectOperator &oper)
+{
+  const int cell_num = oper.tuple_cell_num();
+  const TupleCellSpec *cell_spec = nullptr;
+  for (int i = 0; i < cell_num; i++) {
+    oper.tuple_cell_spec_at(i, cell_spec);
+    if (i != 0) {
+      os << " | ";
+    }
+
+    if (cell_spec->alias()) {
+      os << cell_spec->alias();
+    }
+  }
+
+  if (cell_num > 0) {
+    os << '\n';
+  }
+}
+
 void tuple_to_string(std::ostream &os, const Tuple &tuple)
 {
   TupleCell cell;
@@ -399,17 +423,71 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
   LOG_INFO("use index for scan: %s in table %s", index->index_meta().name(), table->name());
   return oper;
 }
+RC ExecuteStage::do_mul_table_select(SQLStageEvent *sql_event){
+  SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
+  SessionEvent *session_event = sql_event->session_event();
+  RC rc = RC::SUCCESS;
 
+  std::map<std::string, int> name_map;
+  MultiTableOperator mul_operator;
+  std::vector<Operator *> scan_opers;
+  for (size_t i = 0; i < select_stmt->tables().size();i++) {
+    Table *table = select_stmt->tables()[i];
+    Operator *scan_oper = nullptr;
+    // scan_oper =  try_to_create_index_scan_operator(select_stmt->filter_stmt());
+    if (nullptr == scan_oper) {
+      scan_oper = new TableScanOperator(table);
+    }
+    scan_opers.push_back(scan_oper);
+    mul_operator.add_child(scan_oper);
+    name_map[table->name()] = i;
+  }
+
+  DEFER([&scan_opers](){
+    for(auto ptr:scan_opers){
+      delete ptr;
+    }
+  });
+  MultiTablePredicateOperator pred_oper(select_stmt->filter_stmt(), name_map);
+  pred_oper.add_child(&mul_operator);
+  MultiTableProjectOperator project_oper;
+  project_oper.set_name_map(name_map);
+  project_oper.add_child(&pred_oper);
+  for (const Field &field : select_stmt->query_fields()) {
+    project_oper.add_projection(field.table(), field.meta());
+  }
+  rc = project_oper.open();
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to open operator");
+    return rc;
+  }
+
+  std::stringstream ss;
+  print_tuple_header(ss, project_oper);
+  while ((rc = project_oper.next()) == RC::SUCCESS) {
+    const Tuple * tuple = project_oper.current_tuple();
+
+    tuple_to_string(ss, *tuple);
+    ss << std::endl;
+  }
+
+  if (rc != RC::RECORD_EOF) {
+    LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
+    project_oper.close();
+  } else {
+    rc = project_oper.close();
+  }
+  session_event->set_response(ss.str());
+  return rc;
+}
 RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 {
   SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
-  /**if (select_stmt->tables().size() != 1) {
-    LOG_WARN("select more than 1 tables is not supported");
-    rc = RC::UNIMPLENMENT;
-    return rc;
-  }*/
+  if (select_stmt->tables().size() > 1) {
+    return do_mul_table_select(sql_event);
+  }
 
   Operator *scan_oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
   if (nullptr == scan_oper) {
