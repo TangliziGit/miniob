@@ -34,11 +34,6 @@ public:
   virtual RC close() = 0;
 
   virtual Tuple * current_tuple() = 0;
-  virtual const std::vector<Tuple *>& current_tuples(){
-    return null_tuple;
-  }
-  // virtual int tuple_cell_num() const = 0;
-  // virtual RC  tuple_cell_spec_at(int index, TupleCellSpec *&spec) const = 0;
 
   void add_child(Operator *oper) {
     children_.push_back(oper);
@@ -47,5 +42,4 @@ public:
 
 protected:
   std::vector<Operator *> children_;
-  std::vector<Tuple *> null_tuple;
 };

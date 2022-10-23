@@ -11,7 +11,6 @@ RC MultiTableOperator::open()
       return rc;
     }
   }
-  tuples_.resize(children_.size());
   /* 打开剩下最后一个scanner不next */
   for (size_t i = 0; i < children_.size()-1;i++){
     rc = children_[i]->next();
@@ -19,6 +18,7 @@ RC MultiTableOperator::open()
     if(rc !=RC::SUCCESS){
       return rc;
     }
+    tuple_.set_tuple(i, children_[i]->current_tuple());
   }
   return rc;
 }
@@ -28,7 +28,6 @@ RC MultiTableOperator::next()
   size_t size = children_.size();
   RC rc = RC::SUCCESS;
   for (size_t i = size - 1; i >= 0; i--) {
-    /* TODO:如果有个table没有数据怎么办? */
     if ((rc = children_[i]->next()) != RC::SUCCESS) {
       if (rc!=RC::RECORD_EOF || i == 0) {
         return rc;
@@ -37,12 +36,11 @@ RC MultiTableOperator::next()
       children_[i]->close();
       children_[i]->open();
       children_[i]->next();
+      tuple_.set_tuple(i, children_[i]->current_tuple());
     }else{
+      tuple_.set_tuple(i, children_[i]->current_tuple());
       break;
     }
-  }
-  for (int i = 0; i < size;i++){
-    tuples_[i] = children_[i]->current_tuple();
   }
   return rc;
 }
@@ -59,7 +57,7 @@ RC MultiTableOperator::close()
   return rc;
 }
 
-const std::vector<Tuple *> &MultiTableOperator::current_tuples()
+Tuple * MultiTableOperator::current_tuple()
 {
-  return tuples_;
+  return &tuple_;
 }

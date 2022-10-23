@@ -6,17 +6,17 @@
 class MultiTableOperator : public Operator
 {
 public:
-  MultiTableOperator() = default;
+  MultiTableOperator(){}
 
   virtual ~MultiTableOperator() = default;
-
+  void init(const std::map<std::string,int> &name_map){
+    tuple_.init(name_map);
+  }
   RC open() override;
   RC next() override;
   RC close() override;
-  Tuple * current_tuple() override{
-    return nullptr;
-  }
-  const std::vector<Tuple *> &current_tuples();
+  Tuple *current_tuple() override;
+
 private:
-  std::vector<Tuple *> tuples_;
+  MulProjectTuple  tuple_;
 };
