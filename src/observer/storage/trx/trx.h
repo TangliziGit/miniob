@@ -38,6 +38,8 @@ public:
 public:
   Operation(Type type, const RID &rid) : type_(type), page_num_(rid.page_num), slot_num_(rid.slot_num)
   {}
+  Operation(Type type, const RID &rid,const Record &pre_record) : type_(type), page_num_(rid.page_num), slot_num_(rid.slot_num),pre_record_(pre_record)
+  {}
 
   Type type() const
   {
@@ -51,11 +53,16 @@ public:
   {
     return slot_num_;
   }
+  Record pre_record()const{
+    return pre_record_;
+  }
 
 private:
   Type type_;
   PageNum page_num_;
   SlotNum slot_num_;
+  /* for update */
+  Record pre_record_;
 };
 class OperationHasher {
 public:
@@ -96,7 +103,7 @@ public:
 public:
   RC insert_record(Table *table, Record *record);
   RC delete_record(Table *table, Record *record);
-  RC update_record(Table *table, Record *record);
+  RC update_record(Table *table, Record *record,Record * pre_record);
 
   RC commit();
   RC rollback();
@@ -120,7 +127,7 @@ private:
   using OperationSet = std::unordered_set<Operation, OperationHasher, OperationEqualer>;
 
   Operation *find_operation(Table *table, const RID &rid);
-  void insert_operation(Table *table, Operation::Type type, const RID &rid);
+  void insert_operation(Table *table, Operation::Type type, const RID &rid,Record pre_record = Record());
   void delete_operation(Table *table, const RID &rid);
 
 private:

@@ -402,6 +402,17 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out)
   return RC::SUCCESS;
 }
 
+RC Table::copy_record(Record *record_in, Record *record_out){
+  // 复制所有字段的值
+  int record_size = table_meta_.record_size();
+  char *record = new char[record_size];
+  memcpy(record, record_in->data(), record_size);
+  record_out->set_data(record);
+  record_out->set_rid(record_in->rid());
+  return RC::SUCCESS;
+}
+
+
 RC Table::init_record_handler(const char *base_dir)
 {
   std::string data_file = table_data_file(base_dir, table_meta_.name());
@@ -734,7 +745,9 @@ RC Table::update_record(Trx *trx, Record *record, const std::vector<const char *
         strrc(rc));
     return rc;
   }
-  for (size_t i = 0; i < attribute_name.size();i++){
+  Record pre_record;
+  copy_record(record, &pre_record);
+  for (size_t i = 0; i < attribute_name.size(); i++) {
     const FieldMeta *meta = table_meta_.field(attribute_name[i]);
 
     if (meta == nullptr) {
@@ -746,20 +759,28 @@ RC Table::update_record(Trx *trx, Record *record, const std::vector<const char *
           strrc(rc));
       return rc;
     }
-    memmove(record->data() + meta->offset(), value[i].data, meta->len());
+    memcpy(record->data() + meta->offset(), value[i].data, meta->len());
   }
-
-  if (trx == nullptr) {
+  // if(trx != nullptr){
+  //   trx->init_trx_info(this, *record);
+  // }
     rc = record_handler_->update_record(record);
-  } else {
-    rc = trx->update_record(this, record);
-  }
 
-  rc = insert_entry_of_indexes(record->data(), record->rid());
   if (rc != RC::SUCCESS) {
-    LOG_ERROR("Failed to update indexes of record (rid=%d.%d). rc=%d:%s",
+    LOG_ERROR("Failed to update record (rid=%d.%d). rc=%d:%s",
               record->rid().page_num, record->rid().slot_num, rc, strrc(rc));
     return rc;
+  }
+
+  rc = insert_entry_of_indexes(record->data(),record->rid());
+  if (rc != RC::SUCCESS) {
+    insert_entry_of_indexes(pre_record.data(),pre_record.rid());
+    record_handler_->update_record(&pre_record);
+    return rc;
+  }
+
+  if(trx != nullptr){
+    rc = trx->update_record(this, record, &pre_record);
   }
 
   return rc;
@@ -767,16 +788,30 @@ RC Table::update_record(Trx *trx, Record *record, const std::vector<const char *
 
 RC Table::commit_update(Trx *trx, const RID &rid)
 {
-  Record record;
-  RC rc = record_handler_->get_record(&rid, &record);
-  if (rc != RC::SUCCESS) {
-    return rc;
-  }
+  /* 现在实际存的就是跟新后的数据,无需改变. */
+  return SUCCESS;
+}
 
-  rc = record_handler_->update_record(&record);
+RC Table::rollback_update(Trx *trx, const RID &rid,const Record&pre_record)
+{
+  RC rc = RC::SUCCESS;
+  Record record;
+  rc = record_handler_->get_record(&rid, &record);
   if (rc != RC::SUCCESS) {
     return rc;
   }
+  /* 索引中删除新插入的 */
+  assert(pre_record.rid() == record.rid());
+  rc = delete_entry_of_indexes(record.data(), record.rid(), true);
+  if(rc !=RC::SUCCESS){
+    return rc;
+  }
+  /* 向索引中插入之前的 */
+  rc = insert_entry_of_indexes(pre_record.data(), pre_record.rid());
+  if( rc != RC::SUCCESS){
+    return rc;
+  }
+  rc = record_handler_->update_record(&pre_record);
   return rc;
 }
 
@@ -831,28 +866,28 @@ RC Table::delete_record(Trx *trx, Record *record)
     LOG_ERROR("Failed to delete indexes of record (rid=%d.%d). rc=%d:%s",
                 record->rid().page_num, record->rid().slot_num, rc, strrc(rc));
     return rc;
-  } 
-  
+  }
+
   rc = record_handler_->delete_record(&record->rid());
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to delete record (rid=%d.%d). rc=%d:%s",
                 record->rid().page_num, record->rid().slot_num, rc, strrc(rc));
     return rc;
   }
-
+    
   if (trx != nullptr) {
     rc = trx->delete_record(this, record);
-    
+
     CLogRecord *clog_record = nullptr;
     rc = clog_manager_->clog_gen_record(CLogType::REDO_DELETE, trx->get_current_id(), clog_record, name(), 0, record);
-    if (rc != RC::SUCCESS) {
+  if (rc != RC::SUCCESS) {
       LOG_ERROR("Failed to create a clog record. rc=%d:%s", rc, strrc(rc));
       return rc;
     }
     rc = clog_manager_->clog_append_record(clog_record);
     if (rc != RC::SUCCESS) {
-      return rc;
-    }
+    return rc;
+  }
   }
 
   return rc;
@@ -896,16 +931,23 @@ RC Table::rollback_delete(Trx *trx, const RID &rid)
   if (rc != RC::SUCCESS) {
     return rc;
   }
+  /* 插入索引 */
+  insert_entry_of_indexes(record.data(), rid);
 
   return trx->rollback_delete(this, record);  // update record in place
 }
 
+
 RC Table::insert_entry_of_indexes(const char *record, const RID &rid)
 {
   RC rc = RC::SUCCESS;
-  for (Index *index : indexes_) {
+  for (size_t i = 0; i < indexes_.size();i++) {
+    Index *index = indexes_[i];
     rc = index->insert_entry(record, &rid);
     if (rc != RC::SUCCESS) {
+      for (size_t j = 0; j < i;j++){
+        index->delete_entry(record, &rid);
+      }
       break;
     }
   }
