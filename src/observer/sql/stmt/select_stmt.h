@@ -47,6 +47,8 @@ private:
   std::vector<AbstractField *> query_fields_;
   std::vector<Table *> tables_;
   FilterStmt *filter_stmt_ = nullptr;
+  AbstractField *order_field_ = nullptr;
+  OrderFlag order_flag_;
   bool has_aggregation_ = false;
   std::vector<FunctionField *> aggregation_fields_;
 };

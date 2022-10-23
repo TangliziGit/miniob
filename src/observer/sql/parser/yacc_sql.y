@@ -26,6 +26,8 @@ typedef struct ParserContext {
   Value insert_values[MAX_NUM][MAX_NUM];
   Condition conditions[MAX_NUM];
   CompOp comp;
+  RelAttr order_attr;
+  OrderFlag order_flag;
   size_t id_num;
   char id[MAX_NUM][MAX_NUM];
 } ParserContext;
@@ -119,7 +121,9 @@ ParserContext *get_context(yyscan_t scanner)
         UNIQUE
         INNER
         JOIN
-
+		ASC
+		ORDER
+		BY
 %union {
   struct _Attr *attr;
   struct _Condition *condition1;
@@ -387,7 +391,7 @@ eq_define_list:%empty
    }
 
 select:				/*  select 语句的语法解析树*/
-    SELECT select_attr FROM rel_id rel_list join_attr_list where SEMICOLON
+    SELECT select_attr FROM rel_id rel_list join_attr_list where order_by SEMICOLON
 		{
 
 			selects_append_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
@@ -408,6 +412,33 @@ join_attr:
 join_attr_list:%empty
     | join_attr join_attr_list{
 };
+order_by:%empty
+    | ORDER BY order_attr order {
+		selects_set_order(&CONTEXT->ssql->sstr.selection, CONTEXT->order_attr, CONTEXT->order_flag);
+	}
+	;
+order:%empty {
+	    CONTEXT->order_flag = ASC_T;
+    }
+    | DESC {
+		CONTEXT->order_flag = DESC_T;
+	}
+	| ASC {
+		CONTEXT->order_flag = ASC_T;
+	}
+	;
+order_attr:
+    ID  { 
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, $1);
+			CONTEXT->order_attr=attr;
+    }
+    | ID DOT ID {
+			RelAttr attr;
+			relation_attr_init(&attr, $1, $3);
+			CONTEXT->order_attr=attr;
+		}
+		;
 select_attr:
     STAR attr_list {
 			RelAttr attr;

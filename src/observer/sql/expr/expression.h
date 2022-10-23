@@ -119,3 +119,7 @@ private:
   std::vector<AbstractField *> fields_;
   Function *function_;
 };
+
+class CompositeExpression : public Expression {
+  
+};

@@ -205,7 +205,10 @@ void selects_append_relation(Selects *selects, const char *relation_name)
 {
   selects->relations[selects->relation_num++] = strdup(relation_name);
 }
-
+void selects_set_order(Selects *selects, RelAttr rel_attr, OrderFlag flag) {
+  selects->order_by = rel_attr;
+  selects->order_flag = flag;
+}
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num)
 {
   assert(condition_num <= sizeof(selects->conditions) / sizeof(selects->conditions[0]));

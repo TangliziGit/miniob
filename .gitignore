@@ -7,6 +7,7 @@ build/*
 cmake-build-*/*
 observer.log*
 miniob
+deps/*
 .vscode/*
 .DS_Store
 .idea

@@ -148,7 +148,22 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   }
 
   LOG_INFO("got %d tables in from stmt and %d fields in query stmt", tables.size(), query_fields.size());
-
+  AbstractField *order_field = nullptr;
+  if (select_sql.order_flag != NO_ORDER) {
+    //TODO : order by
+    const RelAttr  &relation_attr = select_sql.order_by;
+    Table* table = tables[0];
+    if (!common::is_blank(relation_attr.relation_name)) {
+      auto iter = table_map.find(relation_attr.relation_name);
+      table = iter->second;
+    }
+    const FieldMeta *field_meta = table->table_meta().field(relation_attr.attribute_name);
+    if (nullptr == field_meta) {
+      LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), relation_attr.attribute_name);
+      return RC::SCHEMA_FIELD_MISSING;
+    }
+    order_field = new Field(table, field_meta);
+  }
   Table *default_table = nullptr;
   if (tables.size() == 1) {
     default_table = tables[0];
@@ -170,6 +185,8 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   select_stmt->filter_stmt_ = filter_stmt;
   select_stmt->has_aggregation_ = has_aggregation;
   select_stmt->aggregation_fields_ = agg_fields;
+  select_stmt->order_field_ = order_field;
+  select_stmt->order_flag_ = select_sql.order_flag;
   stmt = select_stmt;
   return RC::SUCCESS;
 }
