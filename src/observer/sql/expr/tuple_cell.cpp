@@ -71,24 +71,10 @@ int TupleCell::compare(const TupleCell &other) const
     }
   }
 
-  AttrType lhs_type = cast_target(this->data_, this->attr_type_);
-  AttrType rhs_type = cast_target(other.data_, other.attr_type_);
-  AttrType target_type = std::max(lhs_type, rhs_type);
-  switch (target_type) {
-    case INTS: {
-      int lhs = cast_to_int(this->data_, this->attr_type_);
-      int rhs = cast_to_int(other.data_, other.attr_type_);
-      return compare_int(&lhs, &rhs);
-    }
-    case FLOATS: {
-      float lhs = cast_to_float(this->data_, this->attr_type_);
-      float rhs = cast_to_float(other.data_, other.attr_type_);
-      return compare_float(&lhs, &rhs);
-    }
-    default: {
-      LOG_WARN("not supported");
-      break;
-    }
+  auto lhs = this->cast_to(other);
+  auto rhs = other.cast_to(*this);
+  if (lhs.attr_type_ == rhs.attr_type_) {
+    return lhs.compare(rhs);
   }
   return -1; // TODO return rc?
 }
@@ -123,4 +109,142 @@ bool TupleCell::like(const TupleCell &other) const
   }
   LOG_WARN("like not supported");
   return false; // TODO return rc?
+}
+
+TupleCell TupleCell::cast_to(const TupleCell &target) const {
+  if (this->attr_type_ == target.attr_type_) return *this;
+
+  AttrType this_type = cast_target(this->data_, this->attr_type_);
+  AttrType target_type = cast_target(target.data_, target.attr_type_);
+  AttrType new_type = std::max(this_type, target_type);
+  switch (new_type) {
+    case INTS: {
+      int value = cast_to_int(this->data_, this->attr_type_);
+      return TupleCell{value};
+    }
+    case FLOATS: {
+      float value = cast_to_float(this->data_, this->attr_type_);
+      return TupleCell{value};
+    }
+    default: {
+      LOG_WARN("not supported");
+      break;
+    }
+  }
+
+  return *this;
+}
+
+std::pair<TupleCell, RC> TupleCell::add(const TupleCell &other) const {
+  auto lhs = this->cast_to(other);
+  auto rhs = other.cast_to(*this);
+  if (lhs.attr_type_ != rhs.attr_type_) {
+    return { *this, MISMATCH };
+  }
+
+  switch (lhs.attr_type_) {
+    case INTS: {
+      int value = *(int *)lhs.data_ + *(int *)rhs.data_;
+      memcpy(lhs.data_, &value, sizeof(value));
+      return { lhs, SUCCESS };
+    }
+    case FLOATS: {
+      float value = *(float *)lhs.data_ + *(float *)rhs.data_;
+      memcpy(lhs.data_, &value, sizeof(value));
+      return { lhs, SUCCESS };
+    }
+    default:
+      LOG_WARN("not supported");
+  }
+
+  return { lhs, UNIMPLENMENT };
+}
+
+std::pair<TupleCell, RC> TupleCell::div(const TupleCell &other) const {
+  auto lhs = this->cast_to(other);
+  auto rhs = other.cast_to(*this);
+  if (lhs.attr_type_ != rhs.attr_type_) {
+    return { *this, MISMATCH };
+  }
+
+  switch (lhs.attr_type_) {
+    case INTS: {
+      int value = *(int *)lhs.data_ / *(int *)rhs.data_;
+      memcpy(lhs.data_, &value, sizeof(value));
+      return { lhs, SUCCESS };
+    }
+    case FLOATS: {
+      float value = *(float *)lhs.data_ / *(float *)rhs.data_;
+      memcpy(lhs.data_, &value, sizeof(value));
+      return { lhs, SUCCESS };
+    }
+    default:
+      LOG_WARN("not supported");
+  }
+
+  return { lhs, UNIMPLENMENT };
+}
+
+std::pair<TupleCell, RC> TupleCell::min(const TupleCell &other) const {
+  auto lhs = this->cast_to(other);
+  auto rhs = other.cast_to(*this);
+  if (lhs.attr_type_ != rhs.attr_type_) {
+    return { *this, MISMATCH };
+  }
+
+  switch (lhs.attr_type_) {
+    case CHARS: {
+      int result = lhs.compare(rhs);
+      if (result < 0) {
+        return { lhs, SUCCESS };
+      }
+      return { rhs, SUCCESS };
+    }
+    case INTS: {
+      int value = std::min(*(int *)lhs.data_, *(int *)rhs.data_);
+      memcpy(lhs.data_, &value, sizeof(value));
+      return { lhs, SUCCESS };
+    }
+    case FLOATS: {
+      float value = std::min(*(float *)lhs.data_, *(float *)rhs.data_);
+      memcpy(lhs.data_, &value, sizeof(value));
+      return { lhs, SUCCESS };
+    }
+    default:
+      LOG_WARN("not supported");
+  }
+
+  return { lhs, UNIMPLENMENT };
+}
+
+std::pair<TupleCell, RC> TupleCell::max(const TupleCell &other) const {
+  auto lhs = this->cast_to(other);
+  auto rhs = other.cast_to(*this);
+  if (lhs.attr_type_ != rhs.attr_type_) {
+    return { *this, MISMATCH };
+  }
+
+  switch (lhs.attr_type_) {
+    case CHARS: {
+      int result = lhs.compare(rhs);
+      if (result < 0) {
+        return { rhs, SUCCESS };
+      }
+      return { lhs, SUCCESS };
+    }
+    case INTS: {
+      int value = std::max(*(int *)lhs.data_, *(int *)rhs.data_);
+      memcpy(lhs.data_, &value, sizeof(value));
+      return { lhs, SUCCESS };
+    }
+    case FLOATS: {
+      float value = std::max(*(float *)lhs.data_, *(float *)rhs.data_);
+      memcpy(lhs.data_, &value, sizeof(value));
+      return { lhs, SUCCESS };
+    }
+    default:
+      LOG_WARN("not supported");
+  }
+
+  return { lhs, UNIMPLENMENT };
 }

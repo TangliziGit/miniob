@@ -266,7 +266,7 @@ RC Table::insert_record(Trx *trx, Record *record)
 
   if (trx != nullptr) {
     rc = trx->insert_record(this, record);
-    if (rc != RC::SUCCESS) {
+  if (rc != RC::SUCCESS) {
       LOG_ERROR("Failed to log operation(insertion) to trx");
 
       RC rc2 = record_handler_->delete_record(&record->rid());
@@ -276,8 +276,8 @@ RC Table::insert_record(Trx *trx, Record *record)
             rc2,
             strrc(rc2));
       }
-      return rc;
-    }
+    return rc;
+  }
   }
 
   rc = insert_entry_of_indexes(record->data(), record->rid());

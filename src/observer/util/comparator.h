@@ -30,3 +30,5 @@ float cast_to_float(void *data, AttrType type);
 
 void *chars_to_number(const char *data, AttrType &type);
 AttrType cast_target(void *data, AttrType type);
+
+std::pair<void *, RC> datacopy(void *data, AttrType type);

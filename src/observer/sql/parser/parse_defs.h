@@ -22,10 +22,44 @@ See the Mulan PSL v2 for more details. */
 #define MAX_ERROR_MESSAGE 20
 #define MAX_DATA 50
 
+//属性值类型
+typedef enum
+{
+  UNDEFINED,
+  CHARS,
+  INTS,
+  FLOATS,
+  TEXTS,
+  DATES,
+} AttrType;
+
+typedef struct {
+  // to avoid cycle dependence, declare Value and RelAttr as sub struct here
+  struct Value {
+    AttrType type;
+    void *data;
+  };
+  struct RelAttr {
+    char *relation_name;   // relation name (may be NULL) 表名
+    char *attribute_name;  // attribute name              属性名
+  };
+
+  int is_value;
+  struct Value *value;
+  struct RelAttr *attribute;
+} Parameter;
+
+typedef struct {
+  char *function_name;
+  size_t parameter_num;
+  Parameter parameters[MAX_NUM];
+} FunctionAttr;
+
 //属性结构体
 typedef struct {
   char *relation_name;   // relation name (may be NULL) 表名
   char *attribute_name;  // attribute name              属性名
+  FunctionAttr *function;
 } RelAttr;
 
 typedef enum {
@@ -39,17 +73,6 @@ typedef enum {
   LIKE,
   NO_OP
 } CompOp;
-
-//属性值类型
-typedef enum
-{
-  UNDEFINED,
-  CHARS,
-  INTS,
-  FLOATS,
-  TEXTS,
-  DATES,
-} AttrType;
 
 //属性值
 typedef struct _Value {
@@ -197,6 +220,11 @@ typedef struct Query {
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
+
+void parameter_init_attr(Parameter *parameter, RelAttr *attr);
+void parameter_init_value(Parameter *parameter, Value *value);
+void function_init(RelAttr *function, Parameter *parameters, size_t parameter_length, const char *function_name);
+void function_destroy(FunctionAttr *function);
 
 void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const char *attribute_name);
 void relation_attr_destroy(RelAttr *relation_attr);

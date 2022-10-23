@@ -22,6 +22,56 @@ RC parse(char *st, Query *sqln);
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
+void parameter_init_attr(Parameter *parameter, RelAttr *attr) {
+  parameter->is_value = 0;
+  parameter->value = nullptr;
+  parameter->attribute = new Parameter::RelAttr {
+      .relation_name = attr->relation_name,
+      .attribute_name = attr->attribute_name,
+  };
+}
+
+void parameter_init_value(Parameter *parameter, Value *value) {
+  parameter->is_value = 0;
+  parameter->attribute = nullptr;
+  parameter->value = new Parameter::Value {
+      .type = value->type,
+      .data = value->data,
+  };
+}
+
+void function_init(RelAttr *function, Parameter *parameters, size_t parameter_length, const char *function_name) {
+  *function = {
+      .relation_name = nullptr,
+      .attribute_name = nullptr,
+      .function = new FunctionAttr{
+          .function_name = strdup(function_name),
+          .parameter_num = parameter_length,
+          .parameters = {},
+      }
+  };
+
+  for (size_t i=0; i<parameter_length; i++) {
+    function->function->parameters[i] = parameters[i];
+  }
+}
+
+void function_destroy(FunctionAttr *function) {
+  if (function == nullptr) return;
+
+  free(function->function_name);
+  function->function_name = nullptr;
+  for (size_t i = 0; i < function->parameter_num; i++) {
+    // free(function->parameters[i].value->data);
+    // function->parameters[i].value->data = nullptr;
+
+    // free(function->parameters[i].attribute->attribute_name);
+    // function->parameters[i].attribute->attribute_name = nullptr;
+    // free(function->parameters[i].attribute->relation_name);
+    // function->parameters[i].attribute->relation_name = nullptr;
+  }
+}
+
 void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const char *attribute_name)
 {
   if (relation_name != nullptr) {
@@ -30,14 +80,18 @@ void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const
     relation_attr->relation_name = nullptr;
   }
   relation_attr->attribute_name = strdup(attribute_name);
+  relation_attr->function = nullptr;
 }
 
 void relation_attr_destroy(RelAttr *relation_attr)
 {
   free(relation_attr->relation_name);
   free(relation_attr->attribute_name);
+  function_destroy(relation_attr->function);
+  free(relation_attr->function);
   relation_attr->relation_name = nullptr;
   relation_attr->attribute_name = nullptr;
+  relation_attr->function = nullptr;
 }
 
 void value_init_integer(Value *value, int v)
@@ -309,7 +363,7 @@ void create_index_init(
   create_index->index_name = strdup(index_name);
   create_index->relation_name = strdup(relation_name);
   create_index->attribute_count = atr_num;
-  for (auto i = 0; i < atr_num;i++){
+  for (size_t i = 0; i < atr_num;i++){
     create_index->attribute_name[i] = strdup(attr_name[i]);
   }
   create_index->is_unique = is_unique;
@@ -325,7 +379,7 @@ void create_index_destroy(CreateIndex *create_index)
 
   create_index->index_name = nullptr;
   create_index->relation_name = nullptr;
-  for (auto i = 0; i < create_index->attribute_count;i++){
+  for (size_t i = 0; i < create_index->attribute_count;i++){
     create_index->attribute_name[i] = nullptr;
   }
   create_index->attribute_count = 0;

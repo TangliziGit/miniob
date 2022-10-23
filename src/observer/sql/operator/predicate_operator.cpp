@@ -59,7 +59,7 @@ Tuple * PredicateOperator::current_tuple()
   return children_[0]->current_tuple();
 }
 
-bool PredicateOperator::do_predicate(RowTuple &tuple)
+bool PredicateOperator::do_predicate(Tuple &tuple)
 {
   if (filter_stmt_ == nullptr || filter_stmt_->filter_units().empty()) {
     return true;
@@ -111,12 +111,3 @@ bool PredicateOperator::do_predicate(RowTuple &tuple)
   }
   return true;
 }
-
-// int PredicateOperator::tuple_cell_num() const
-// {
-//   return children_[0]->tuple_cell_num();
-// }
-// RC PredicateOperator::tuple_cell_spec_at(int index, TupleCellSpec &spec) const
-// {
-//   return children_[0]->tuple_cell_spec_at(index, spec);
-// }

@@ -15,8 +15,10 @@ See the Mulan PSL v2 for more details. */
 #pragma once
 
 #include <string.h>
+#include <utility>
 #include "storage/common/field.h"
 #include "sql/expr/tuple_cell.h"
+#include "sql/function/function.h"
 
 class Tuple;
 
@@ -24,6 +26,7 @@ enum class ExprType {
   NONE,
   FIELD,
   VALUE,
+  FUNCTION,
 };
 
 class Expression
@@ -79,6 +82,7 @@ class ValueExpr : public Expression
 {
 public:
   ValueExpr() = default;
+  explicit ValueExpr(const TupleCell &cell) : tuple_cell_(cell) {}
   ValueExpr(const Value &value) : tuple_cell_(value.type, (char *)value.data)
   {
     if (value.type == CHARS) {
@@ -100,4 +104,18 @@ public:
 
 private:
   TupleCell tuple_cell_;
+};
+
+class FunctionExpr : public Expression {
+public:
+  explicit FunctionExpr(std::vector<AbstractField *> fields, Function *function)
+      : fields_(std::move(fields)), function_(function) {}
+  ~FunctionExpr() override = default;
+
+  ExprType type() const override { return ExprType::FUNCTION; }
+  RC get_value(const Tuple &tuple, TupleCell &cell) const override;
+
+private:
+  std::vector<AbstractField *> fields_;
+  Function *function_;
 };

@@ -70,6 +70,30 @@ public:
   virtual RC  find_cell(const Field &field, TupleCell &cell) const = 0;
 
   virtual RC  cell_spec_at(int index, const TupleCellSpec *&spec) const = 0;
+
+  // extract_cells just for function arguments extracting
+  std::pair<Function::Arguments, RC> extract_cells(const std::vector<AbstractField *>& fields) const {
+    Function::Arguments args;
+    for (const auto field: fields) {
+      TupleCell cell;
+      switch (field->type()) {
+        case FieldType::FIELD:
+          this->find_cell(*dynamic_cast<Field *>(field), cell);
+          break;
+        case FieldType::VALUE_FIELD: {
+          auto value = dynamic_cast<ValueField *>(field)->value();
+          cell.set_type(value->type);
+          cell.set_data((char *)value->data);
+          break;
+        }
+        default:
+          // recursive function call is not necessary
+          return { {}, RC::MISMATCH };
+      }
+      args.push_back(cell);
+    }
+    return { args, RC::SUCCESS };
+  }
 };
 
 class RowTuple : public Tuple
@@ -162,17 +186,7 @@ private:
   std::vector<TupleCellSpec *> speces_;
 };
 
-/*
-class CompositeTuple : public Tuple
-{
-public:
-  int cell_num() const override; 
-  RC  cell_at(int index, TupleCell &cell) const = 0;
-private:
-  int cell_num_ = 0;
-  std::vector<Tuple *> tuples_;
-};
-*/
+
 
 class ProjectTuple : public Tuple
 {
@@ -205,11 +219,17 @@ public:
     if (index < 0 || index >= static_cast<int>(speces_.size())) {
       return RC::GENERIC_ERROR;
     }
+
+    const TupleCellSpec *spec = speces_[index];
+    if (spec->expression()->type() == ExprType::VALUE) {
+      RowTuple tmp;
+      return spec->expression()->get_value(tmp, cell);
+    }
+
     if (tuple_ == nullptr) {
       return RC::GENERIC_ERROR;
     }
 
-    const TupleCellSpec *spec = speces_[index];
     return spec->expression()->get_value(*tuple_, cell);
   }
 
@@ -228,4 +248,44 @@ public:
 private:
   std::vector<TupleCellSpec *> speces_;
   Tuple *tuple_ = nullptr;
+};
+
+class MulProjectTuple: public Tuple
+{
+public:
+  MulProjectTuple() = default;
+  virtual ~MulProjectTuple(){}
+
+  void init(const std::map<std::string,int> &name_map){
+    this->tuples_.resize(name_map.size());
+    this->name_map_ = name_map;
+  }
+
+  void set_tuple(int idx,Tuple * tuple)
+  {
+    this->tuples_[idx] = tuple;
+  }
+
+  int cell_num() const override{
+    return 0;
+  }
+
+  RC cell_at(int index, TupleCell &cell) const override
+  {
+    return RC::UNIMPLENMENT;
+  }
+
+  RC find_cell(const Field &field, TupleCell &cell) const override
+  {
+    int idx = name_map_.find(field.table_name())->second;
+    return tuples_.at(idx)->find_cell(field, cell);
+  }
+  RC cell_spec_at(int index, const TupleCellSpec *&spec) const override
+  {
+    return RC::UNIMPLENMENT;
+  }
+
+private:
+  std::vector<Tuple *> tuples_;
+  std::map<std::string, int> name_map_;
 };

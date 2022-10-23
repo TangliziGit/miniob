@@ -33,6 +33,8 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/delete_operator.h"
 #include "sql/operator/update_operator.h"
 #include "sql/operator/project_operator.h"
+#include "sql/operator/multi_table_operator.h"
+#include "sql/operator/aggregation_operator.h"
 #include "sql/stmt/stmt.h"
 #include "sql/stmt/select_stmt.h"
 #include "sql/stmt/update_stmt.h"
@@ -234,25 +236,30 @@ void end_trx_if_need(Session *session, Trx *trx, bool all_right)
   }
 }
 
-void print_tuple_header(std::ostream &os, const ProjectOperator &oper)
+void print_tuple_header(std::ostream &os, const std::vector<AbstractField *> &fields,bool is_multi_table)
 {
-  const int cell_num = oper.tuple_cell_num();
-  const TupleCellSpec *cell_spec = nullptr;
+  const int cell_num = fields.size();
   for (int i = 0; i < cell_num; i++) {
-    oper.tuple_cell_spec_at(i, cell_spec);
     if (i != 0) {
       os << " | ";
     }
 
-    if (cell_spec->alias()) {
-      os << cell_spec->alias();
+    // TODO(chunxu): how to deal with alias? maybe add operator::get_output_schema function?
+    // if (cell_spec->alias()) {
+    //   os << cell_spec->alias();
+    // }
+    if(is_multi_table&&fields[i]->is_field()){
+      /* 多表查询需要带上表名 */
+      os << reinterpret_cast<Field *>(fields[i])->table_name() << ".";
     }
+    os << fields[i]->name();
   }
 
   if (cell_num > 0) {
     os << '\n';
   }
 }
+
 void tuple_to_string(std::ostream &os, const Tuple &tuple)
 {
   TupleCell cell;
@@ -405,38 +412,62 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
-  /**if (select_stmt->tables().size() != 1) {
-    LOG_WARN("select more than 1 tables is not supported");
-    rc = RC::UNIMPLENMENT;
-    return rc;
-  }*/
 
-  Operator *scan_oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
-  if (nullptr == scan_oper) {
-    scan_oper = new TableScanOperator(select_stmt->tables()[0]);
+  auto tables = select_stmt->tables();
+  std::vector<Operator *> scan_opers;
+  std::map<std::string, int> name_idx_;
+  for (size_t i = 0; i < tables.size();i++){
+    name_idx_[tables[i]->name()] = i;
+    Operator *scan_oper = nullptr;
+    if (tables.size() == 1) {
+      /* todo(yin),find index oper for multi table select */
+       scan_oper =  try_to_create_index_scan_operator(select_stmt->filter_stmt());
+    }
+    if (nullptr == scan_oper) {
+      scan_oper = new TableScanOperator(tables[i]);
+    }
+    scan_opers.push_back(scan_oper);
   }
 
-  DEFER([&] () {delete scan_oper;});
+  DEFER([&] () {
+     for(auto scan_oper:scan_opers){
+       delete scan_oper;
+     }
+  });
 
+  MultiTableOperator mul_oper;
+  mul_oper.init(name_idx_);
+  for(auto scan_oper:scan_opers){
+     mul_oper.add_child(scan_oper);
+  }
   PredicateOperator pred_oper(select_stmt->filter_stmt());
-  pred_oper.add_child(scan_oper);
-  ProjectOperator project_oper;
-  project_oper.add_child(&pred_oper);
-  for (const Field &field : select_stmt->query_fields()) {
-    project_oper.add_projection(field.table(), field.meta());
+  pred_oper.add_child(&mul_oper);
+  Operator *oper = nullptr;
+  if (select_stmt->has_aggregation()) {
+    // TODO(chunxu): add group by and having fields
+    oper = new AggregationOperator(select_stmt->query_fields(), {}, {}, select_stmt->aggregation_fields());
+  } else {
+    auto project_oper = new ProjectOperator();
+    for (const auto *field : select_stmt->query_fields()) {
+      project_oper->add_projection(field);
+    }
+    oper = project_oper;
   }
-  rc = project_oper.open();
+  oper->add_child(&pred_oper);
+
+  rc = oper->open();
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to open operator");
+    session_event->set_response("FAILURE\n");
     return rc;
   }
 
   std::stringstream ss;
-  print_tuple_header(ss, project_oper);
-  while ((rc = project_oper.next()) == RC::SUCCESS) {
+  print_tuple_header(ss, select_stmt->query_fields(), tables.size() > 1);
+  while ((rc = oper->next()) == RC::SUCCESS) {
     // get current record
     // write to response
-    Tuple * tuple = project_oper.current_tuple();
+    Tuple * tuple = oper->current_tuple();
     if (nullptr == tuple) {
       rc = RC::INTERNAL;
       LOG_WARN("failed to get current record. rc=%s", strrc(rc));
@@ -449,9 +480,9 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 
   if (rc != RC::RECORD_EOF) {
     LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
-    project_oper.close();
+    oper->close();
   } else {
-    rc = project_oper.close();
+    rc = oper->close();
   }
   session_event->set_response(ss.str());
   return rc;
