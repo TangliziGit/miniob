@@ -505,8 +505,7 @@ rel_id:
 ;
 rel_list: %empty 
     /* empty */
-    | COMMA ID rel_list {	
-				selects_append_relation(&CONTEXT->ssql->sstr.selection, $2);
+    | COMMA rel_id rel_list {	
 		  }
     ;
 where: %empty 

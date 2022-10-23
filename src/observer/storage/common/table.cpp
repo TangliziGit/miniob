@@ -282,14 +282,7 @@ RC Table::insert_record(Trx *trx, Record *record)
 
   rc = insert_entry_of_indexes(record->data(), record->rid());
   if (rc != RC::SUCCESS) {
-    RC rc2 = delete_entry_of_indexes(record->data(), record->rid(), true);
-    if (rc2 != RC::SUCCESS) {
-      LOG_ERROR("Failed to rollback index data when insert index entries failed. table name=%s, rc=%d:%s",
-          name(),
-          rc2,
-          strrc(rc2));
-    }
-    rc2 = record_handler_->delete_record(&record->rid());
+    RC rc2 = record_handler_->delete_record(&record->rid());
     if (rc2 != RC::SUCCESS) {
       LOG_PANIC("Failed to rollback record data when insert index entries failed. table name=%s, rc=%d:%s",
           name(),

@@ -14,7 +14,6 @@ RC MultiTableOperator::open()
   /* 打开剩下最后一个scanner不next */
   for (size_t i = 0; i < children_.size()-1;i++){
     rc = children_[i]->next();
-    /* 如果有一个为空呢? */
     if(rc !=RC::SUCCESS){
       return rc;
     }
@@ -35,7 +34,10 @@ RC MultiTableOperator::next()
       /* todo, check rc */
       children_[i]->close();
       children_[i]->open();
-      children_[i]->next();
+      /* 空表 */
+      if( (rc = children_[i]->next())!=RC::SUCCESS){
+        return rc;
+      }
       tuple_.set_tuple(i, children_[i]->current_tuple());
     }else{
       tuple_.set_tuple(i, children_[i]->current_tuple());
