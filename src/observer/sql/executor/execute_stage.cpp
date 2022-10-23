@@ -456,7 +456,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   oper->add_child(&pred_oper);
 
   rc = oper->open();
-  if (rc != RC::SUCCESS) {
+  if (rc != RC::SUCCESS && rc!=RC::RECORD_EOF) {
     LOG_WARN("failed to open operator");
     session_event->set_response("FAILURE\n");
     return rc;
