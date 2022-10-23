@@ -464,7 +464,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 
   std::stringstream ss;
   print_tuple_header(ss, select_stmt->query_fields(), tables.size() > 1);
-  while ((rc = oper->next()) == RC::SUCCESS) {
+  while (rc != RC::RECORD_EOF&&(rc = oper->next()) == RC::SUCCESS) {
     // get current record
     // write to response
     Tuple * tuple = oper->current_tuple();
