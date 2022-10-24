@@ -46,6 +46,13 @@ static void wildcard_fields(Table *table, std::vector<AbstractField *> &field_me
   }
 }
 
+bool same_field_exists(const std::vector<FunctionField *> &fields, AbstractField &field) {
+  for (const auto &f: fields) {
+    if (f->name() == field.name()) return true;
+  }
+  return false;
+}
+
 RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
 {
   if (nullptr == db) {
@@ -252,6 +259,38 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   if (rc != RC::SUCCESS) {
     LOG_WARN("cannot construct having filter stmt");
     return rc;
+  }
+
+  for (size_t i = 0; i < select_sql.having_condition_num; i++) {
+    auto condition = select_sql.having_conditions[i];
+
+    if (condition.left_is_attr && condition.left_attr.function != nullptr) {
+      auto func_attr = condition.left_attr.function;
+      auto result = FunctionField::make(tables[0], table_map, func_attr);
+      if (result.second != RC::SUCCESS) {
+        return result.second;
+      }
+
+      bool is_agg = FunctionRegister::is_aggregation(func_attr->function_name);
+      has_aggregation |= is_agg;
+      if (is_agg && !same_field_exists(agg_fields, *result.first)) {
+        agg_fields.push_back(result.first);
+      }
+    }
+
+    if (condition.right_is_attr && condition.right_attr.function != nullptr) {
+      auto func_attr = condition.right_attr.function;
+      auto result = FunctionField::make(tables[0], table_map, func_attr);
+      if (result.second != RC::SUCCESS) {
+        return result.second;
+      }
+
+      bool is_agg = FunctionRegister::is_aggregation(func_attr->function_name);
+      has_aggregation |= is_agg;
+      if (is_agg && !same_field_exists(agg_fields, *result.first)) {
+        agg_fields.push_back(result.first);
+      }
+    }
   }
 
   // everything alright
