@@ -450,7 +450,12 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   Operator *oper = nullptr;
   if (select_stmt->has_aggregation()) {
     // TODO(chunxu): add group by and having fields
-    oper = new AggregationOperator(select_stmt->query_fields(), {}, {}, select_stmt->aggregation_fields());
+    oper = new AggregationOperator(
+        select_stmt->query_fields(),
+        select_stmt->aggregation_fields(),
+        select_stmt->group_by_fields(),
+        select_stmt->having_filter_stmt()
+    );
   } else {
     auto project_oper = new ProjectOperator();
     for (const auto *field : select_stmt->query_fields()) {

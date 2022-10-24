@@ -103,14 +103,18 @@ typedef struct _Condition {
 
 // struct of select
 typedef struct {
-  size_t attr_num;                // Length of attrs in Select clause
-  RelAttr attributes[MAX_NUM];    // attrs in Select clause
-  size_t relation_num;            // Length of relations in Fro clause
-  char *relations[MAX_NUM];       // relations in From clause
-  size_t condition_num;           // Length of conditions in Where clause
-  Condition conditions[MAX_NUM];  // conditions in Where clause
-  RelAttr order_by;               // order by field
-  OrderFlag order_flag;           // DESC or ASC(Default)
+  size_t attr_num;                      // Length of attrs in Select clause
+  RelAttr attributes[MAX_NUM];          // attrs in Select clause
+  size_t relation_num;                  // Length of relations in From clause
+  char *relations[MAX_NUM];             // relations in From clause
+  size_t condition_num;                 // Length of conditions in Where clause
+  Condition conditions[MAX_NUM];        // conditions in Where clause
+  size_t group_by_attr_num;             // Length of attrs in Group By clause
+  RelAttr group_by_attrs[MAX_NUM];      // attrs in Group By clause
+  size_t having_condition_num;          // Length of conditions in Having clause
+  Condition having_conditions[MAX_NUM]; // conditions in Having clause
+  RelAttr order_by;                     // order by field
+  OrderFlag order_flag;                 // DESC or ASC(Default)
 } Selects;
 
 // struct of insert
@@ -261,6 +265,8 @@ void selects_append_attribute(Selects *selects, RelAttr *rel_attr);
 void selects_append_relation(Selects *selects, const char *relation_name);
 void selects_set_order(Selects *selects, RelAttr rel_attr, OrderFlag flag);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
+void selects_append_group_by(Selects *selects, RelAttr rel_attr[], size_t attr_num);
+void selects_append_having(Selects *selects, Condition conditions[], size_t condition_num);
 void selects_destroy(Selects *selects);
 
 void inserts_init(Inserts *inserts, const char *relation_name, Value values[MAX_NUM][MAX_NUM], size_t value_num[MAX_NUM], size_t insert_num);

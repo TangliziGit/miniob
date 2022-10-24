@@ -178,20 +178,3 @@ private:
   const char *name_;
   const char *function_name_;
 };
-
-class AggregationField : public AbstractField {
-public:
-  AggregationField(std::vector<AbstractField *> fields, const char *name, const char *function_name)
-      : fields_(std::move(fields)), name_(name), function_name_(function_name)
-  {}
-
-  FieldType type() const override { return FieldType::FUNCTION_FIELD; }
-  const char *name() const override { return name_; }
-  const char *function_name() const { return function_name_; }
-  std::vector<AbstractField *> fields() const { return fields_; }
-
-private:
-  const std::vector<AbstractField *> fields_;
-  const char *name_;
-  const char *function_name_;
-};

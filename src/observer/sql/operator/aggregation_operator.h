@@ -15,14 +15,14 @@ class AggregationOperator : public Operator
 public:
   AggregationOperator(
       std::vector<AbstractField *> select_fields,
+      std::vector<FunctionField *> aggregation_fields,
       std::vector<Field *> group_by_fields,
-      std::vector<Field *> having_fields,
-      std::vector<FunctionField *> aggregation_fields)
+      FilterStmt *having_fields)
       : select_field_to_index_(),
         select_fields_(std::move(select_fields)),
         group_by_fields_(std::move(group_by_fields)),
-        having_fields_(std::move(having_fields)),
-        aggregation_fields_(std::move(aggregation_fields)) {}
+        aggregation_fields_(std::move(aggregation_fields)),
+        predicate_oper_(having_fields) {}
 
   RC open() override {
     // build select_field_to_index for generating project tuple
@@ -90,15 +90,16 @@ public:
   };
 
   RC next() override {
-    auto &iter = next_iter_;
-    while (iter != states_.end()) {
+    for (auto &iter = next_iter_; iter != states_.end(); iter++) {
       AggKey key = iter->first;
       AggStates states = iter->second;
 
-      // TODO(chunxu): check having cause
       tuple_ = make_tuple(key, states);
-      iter++;
-      return SUCCESS;
+
+      // if having clause not passed then continue next
+      if (predicate_oper_.do_predicate(*tuple_)) {
+        return SUCCESS;
+      }
     }
     return RECORD_EOF;
   };
@@ -175,7 +176,8 @@ private:
   std::vector<size_t> select_field_to_index_;
   std::vector<AbstractField *> select_fields_;
   std::vector<Field *> group_by_fields_;
-  std::vector<Field *> having_fields_;
   std::vector<FunctionField *> aggregation_fields_;
   std::vector<Function *> functions_;
+
+  PredicateOperator predicate_oper_;
 };

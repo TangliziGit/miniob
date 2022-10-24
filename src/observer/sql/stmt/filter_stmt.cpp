@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/log/log.h"
 #include "common/lang/string.h"
 #include "sql/stmt/filter_stmt.h"
+#include "sql/function/register.h"
 #include "storage/common/db.h"
 #include "storage/common/table.h"
 
@@ -78,6 +79,28 @@ RC get_table_and_field(Db *db, Table *default_table, std::unordered_map<std::str
   return RC::SUCCESS;
 }
 
+std::pair<Expression *, RC> create_function_expr(
+    FunctionAttr *func_attr,
+    Table *default_table,
+    const std::unordered_map<std::string, Table *> &tables) {
+  auto func_field_result = FunctionField::make(default_table, tables, func_attr);
+  if (func_field_result.second != RC::SUCCESS) {
+    return { nullptr, func_field_result.second };
+  }
+
+  const auto &func_field = func_field_result.first;
+  auto func_result = FunctionRegister::create(func_field->function_name(), func_field->fields());
+  if (func_result.second != RC::SUCCESS) {
+    return { nullptr, func_result.second };
+  }
+
+  const auto &func = func_result.first;
+  if (FunctionRegister::is_aggregation(func_attr->function_name)) {
+    return { new AliasExpr(func_field->name()), SUCCESS };
+  }
+  return { new FunctionExpr(func_field->fields(), func), SUCCESS };
+}
+
 RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
 				  const Condition &condition, FilterUnit *&filter_unit)
 {
@@ -92,28 +115,46 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
   Expression *left = nullptr;
   Expression *right = nullptr;
   if (condition.left_is_attr) {
-    Table *table = nullptr;
-    const FieldMeta *field = nullptr;
-    rc = get_table_and_field(db, default_table, tables, condition.left_attr, table, field);
-    if (rc != RC::SUCCESS) {
-      LOG_WARN("cannot find attr");
-      return rc;
+    if (condition.left_attr.function != nullptr) {
+      auto result = create_function_expr(condition.left_attr.function, default_table, *tables);
+      if (result.second != SUCCESS) {
+        return result.second;
+      }
+
+      left = result.first;
+    } else {
+      Table *table = nullptr;
+      const FieldMeta *field = nullptr;
+      rc = get_table_and_field(db, default_table, tables, condition.left_attr, table, field);
+      if (rc != RC::SUCCESS) {
+        LOG_WARN("cannot find attr");
+        return rc;
+      }
+      left = new FieldExpr(table, field);
     }
-    left = new FieldExpr(table, field);
   } else {
     left = new ValueExpr(condition.left_value);
   }
 
   if (condition.right_is_attr) {
-    Table *table = nullptr;
-    const FieldMeta *field = nullptr;
-    rc = get_table_and_field(db, default_table, tables, condition.right_attr, table, field);
-    if (rc != RC::SUCCESS) {
-      LOG_WARN("cannot find attr");
-      delete left;
-      return rc;
+    if (condition.left_attr.function != nullptr) {
+      auto result = create_function_expr(condition.right_attr.function, default_table, *tables);
+      if (result.second != SUCCESS) {
+        return result.second;
+      }
+
+      right = result.first;
+    } else {
+      Table *table = nullptr;
+      const FieldMeta *field = nullptr;
+      rc = get_table_and_field(db, default_table, tables, condition.right_attr, table, field);
+      if (rc != RC::SUCCESS) {
+        LOG_WARN("cannot find attr");
+        delete left;
+        return rc;
+      }
+      right = new FieldExpr(table, field);
     }
-    right = new FieldExpr(table, field);
   } else {
     right = new ValueExpr(condition.right_value);
   }

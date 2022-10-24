@@ -35,3 +35,8 @@ RC FunctionExpr::get_value(const Tuple &tuple, TupleCell &result) const
 
   return function_->execute(args.first, result);
 }
+
+RC AliasExpr::get_value(const Tuple &tuple, TupleCell &cell) const
+{
+  return tuple.find_cell_by_alias(alias_, cell);
+}
