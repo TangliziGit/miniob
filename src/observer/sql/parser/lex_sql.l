@@ -63,6 +63,8 @@ QUOTE            [\'\"]
 [Ii][Nn][Nn][Ee][Rr]                                 RETURN_TOKEN(INNER);
 [Jj][Oo][Ii][Nn]                                     RETURN_TOKEN(JOIN);
 [Ww][Hh][Ee][Rr][Ee]                                 RETURN_TOKEN(WHERE);
+[Gg][Rr][Oo][Uu][Pp]                                 RETURN_TOKEN(GROUP);
+[Hh][Aa][Vv][Ii][Nn][Gg]                             RETURN_TOKEN(HAVING);
 [Aa][Nn][Dd]                                         RETURN_TOKEN(AND);
 [Ii][Nn][Ss][Ee][rR][tT]                             RETURN_TOKEN(INSERT);
 [Ii][Nn][Tt][Oo]                                     RETURN_TOKEN(INTO);

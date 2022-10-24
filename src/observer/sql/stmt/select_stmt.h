@@ -39,7 +39,9 @@ public:
 public:
   const std::vector<Table *> &tables() const { return tables_; }
   const std::vector<AbstractField *> &query_fields() const { return query_fields_; }
+  const std::vector<Field *> &group_by_fields() const { return group_by_fields_; }
   FilterStmt *filter_stmt() const { return filter_stmt_; }
+  FilterStmt *having_filter_stmt() const { return having_filter_stmt_; }
   bool has_aggregation() const { return has_aggregation_; }
   const std::vector<FunctionField *> &aggregation_fields() const { return aggregation_fields_; }
 
@@ -49,7 +51,9 @@ private:
   FilterStmt *filter_stmt_ = nullptr;
   AbstractField *order_field_ = nullptr;
   OrderFlag order_flag_;
+  FilterStmt *having_filter_stmt_ = nullptr;
   bool has_aggregation_ = false;
   std::vector<FunctionField *> aggregation_fields_;
+  std::vector<Field *> group_by_fields_;
 };
 

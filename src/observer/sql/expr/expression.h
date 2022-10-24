@@ -27,6 +27,7 @@ enum class ExprType {
   FIELD,
   VALUE,
   FUNCTION,
+  ALIAS,
 };
 
 class Expression
@@ -125,4 +126,16 @@ private:
 
 class CompositeExpression : public Expression {
   
+};
+
+class AliasExpr : public Expression
+{
+public:
+  explicit AliasExpr(const char *alias) : alias_(alias) {}
+  ~AliasExpr() override = default;
+
+  ExprType type() const override { return ExprType::ALIAS; }
+  RC get_value(const Tuple &tuple, TupleCell &cell) const override;
+private:
+  const char *alias_;
 };

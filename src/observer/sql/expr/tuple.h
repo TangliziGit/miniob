@@ -68,7 +68,7 @@ public:
   virtual int cell_num() const = 0; 
   virtual RC  cell_at(int index, TupleCell &cell) const = 0;
   virtual RC  find_cell(const Field &field, TupleCell &cell) const = 0;
-
+  virtual RC  find_cell_by_alias(const char *alias, TupleCell &cell) const = 0;
   virtual RC  cell_spec_at(int index, const TupleCellSpec *&spec) const = 0;
 
   // extract_cells just for function arguments extracting
@@ -142,6 +142,15 @@ public:
     cell.set_data(this->record_->data() + field_meta->offset());
     cell.set_length(field_meta->len());
     return RC::SUCCESS;
+  }
+
+  RC find_cell_by_alias(const char *alias, TupleCell &cell) const override {
+    for (size_t i = 0; i < speces_.size(); ++i) {
+      if (0 == strcmp(alias, speces_[i]->alias())) {
+        return cell_at(i, cell);
+      }
+    }
+    return RC::NOTFOUND;
   }
 
   RC find_cell(const Field &field, TupleCell &cell) const override
@@ -234,6 +243,15 @@ public:
     return spec->expression()->get_value(*tuple_, cell);
   }
 
+  RC find_cell_by_alias(const char *alias, TupleCell &cell) const override {
+    for (size_t i = 0; i < speces_.size(); ++i) {
+      if (0 == strcmp(alias, speces_[i]->alias())) {
+        return cell_at(i, cell);
+      }
+    }
+    return RC::NOTFOUND;
+  }
+
   RC find_cell(const Field &field, TupleCell &cell) const override
   {
     return tuple_->find_cell(field, cell);
@@ -274,6 +292,11 @@ public:
   RC cell_at(int index, TupleCell &cell) const override
   {
     return RC::UNIMPLENMENT;
+  }
+
+  RC find_cell_by_alias(const char *alias, TupleCell &cell) const override {
+    // TODO(chunxu): it seems not necessary to implement
+    return RC::NOTFOUND;
   }
 
   RC find_cell(const Field &field, TupleCell &cell) const override

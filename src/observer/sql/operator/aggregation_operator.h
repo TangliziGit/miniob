@@ -10,19 +10,48 @@ using AggKey = std::vector<TupleCell *>;
 using AggState = std::vector<TupleCell *>;
 using AggStates = std::vector<AggState>;
 
+namespace std {
+template<>
+struct hash<AggKey> {
+  // better hash function implementation
+  // ref: https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
+  std::size_t operator()(const AggKey &key) const {
+    std::hash<TupleCell> hasher;
+    std::size_t seed = key.size();
+    for(auto& cell: key) {
+      seed ^= hasher(*cell) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+    return seed;
+  }
+};
+
+template<>
+struct equal_to<AggKey> {
+  bool operator()(const AggKey &lhs, const AggKey &rhs ) const {
+    if (lhs.size() != rhs.size()) return false;
+
+    size_t len = lhs.size();
+    for (size_t i=0; i<len; i++) {
+      if (!std::equal_to<TupleCell>{}(*lhs[i], *rhs[i])) return false;
+    }
+    return true;
+  }
+};
+}
+
 class AggregationOperator : public Operator
 {
 public:
   AggregationOperator(
       std::vector<AbstractField *> select_fields,
+      std::vector<FunctionField *> aggregation_fields,
       std::vector<Field *> group_by_fields,
-      std::vector<Field *> having_fields,
-      std::vector<FunctionField *> aggregation_fields)
+      FilterStmt *having_fields)
       : select_field_to_index_(),
         select_fields_(std::move(select_fields)),
         group_by_fields_(std::move(group_by_fields)),
-        having_fields_(std::move(having_fields)),
-        aggregation_fields_(std::move(aggregation_fields)) {}
+        aggregation_fields_(std::move(aggregation_fields)),
+        predicate_oper_(having_fields) {}
 
   RC open() override {
     // build select_field_to_index for generating project tuple
@@ -85,20 +114,44 @@ public:
       return rc;
     }
 
+    for (auto &p: states_) {
+      auto key = p.first;
+      auto val = p.second;
+
+      std::cout << "key hash: " << std::hash<AggKey>()(key);
+      std::cout << "key: ";
+      for (auto &cell: key) {
+        cell->to_string(std::cout);
+        std::cout << ", ";
+      }
+      std::cout << std::endl << "value: ";
+      for (auto &cells: val) {
+        std::cout << "[";
+        for (auto &cell: cells) {
+          cell->to_string(std::cout);
+          std::cout << ", ";
+        }
+        std::cout << "], ";
+      }
+      std::cout << std::endl;
+    }
+
     next_iter_ = states_.begin();
     return RC::SUCCESS;
   };
 
   RC next() override {
-    auto &iter = next_iter_;
-    while (iter != states_.end()) {
+    for (auto &iter = next_iter_; iter != states_.end(); iter++) {
       AggKey key = iter->first;
       AggStates states = iter->second;
 
-      // TODO(chunxu): check having cause
       tuple_ = make_tuple(key, states);
-      iter++;
-      return SUCCESS;
+
+      // if having clause not passed then continue next
+      if (predicate_oper_.do_predicate(*tuple_)) {
+        iter++;
+        return SUCCESS;
+      }
     }
     return RECORD_EOF;
   };
@@ -111,11 +164,12 @@ private:
   std::pair<AggKey, RC> make_key(const Tuple *tuple) {
     std::vector<TupleCell *> key;
     for (const auto field: group_by_fields_) {
-      TupleCell cell;
-      RC rc = tuple->find_cell(*field, cell);
+      auto cell = new TupleCell{};
+      RC rc = tuple->find_cell(*field, *cell);
       if (rc != RC::SUCCESS) {
         return { {}, rc };
       }
+      key.push_back(cell);
     }
     return { key, SUCCESS };
   }
@@ -149,7 +203,8 @@ private:
     size_t key_size = key.size();
     auto *tuple = new ProjectTuple();
 
-    for (const size_t index: select_field_to_index_) {
+    for (size_t i = 0; i<select_field_to_index_.size(); i++) {
+      size_t index = select_field_to_index_[i];
       ValueExpr *value = nullptr;
       if (index < key_size) {
         value = new ValueExpr(*key[index]);
@@ -161,21 +216,24 @@ private:
         value = new ValueExpr(func->settle(state));
       }
 
-      tuple->add_cell_spec(new TupleCellSpec(value));
+      auto spec = new TupleCellSpec(value);
+      spec->set_alias(select_fields_[i]->name());
+      tuple->add_cell_spec(spec);
     }
     return tuple;
   }
 
 private:
-  std::map<AggKey, AggStates>::iterator next_iter_;
+  std::unordered_map<AggKey, AggStates>::iterator next_iter_;
 
   ProjectTuple *tuple_{};
-  std::map<AggKey, AggStates> states_;
+  std::unordered_map<AggKey, AggStates> states_;
 
   std::vector<size_t> select_field_to_index_;
   std::vector<AbstractField *> select_fields_;
   std::vector<Field *> group_by_fields_;
-  std::vector<Field *> having_fields_;
   std::vector<FunctionField *> aggregation_fields_;
   std::vector<Function *> functions_;
+
+  PredicateOperator predicate_oper_;
 };

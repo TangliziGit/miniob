@@ -226,6 +226,20 @@ void selects_append_conditions(Selects *selects, Condition conditions[], size_t 
   selects->condition_num = condition_num;
 }
 
+void selects_append_group_by(Selects *selects, RelAttr rel_attr[], size_t attr_num) {
+  for (size_t i = 0; i < attr_num; i++) {
+    selects->group_by_attrs[i] = rel_attr[i];
+  }
+  selects->group_by_attr_num = attr_num;
+}
+
+void selects_append_having(Selects *selects, Condition conditions[], size_t condition_num) {
+  for (size_t i = 0; i < condition_num; i++) {
+    selects->having_conditions[i] = conditions[i];
+  }
+  selects->having_condition_num = condition_num;
+}
+
 void selects_destroy(Selects *selects)
 {
   for (size_t i = 0; i < selects->attr_num; i++) {

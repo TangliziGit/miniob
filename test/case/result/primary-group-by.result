@@ -79,3 +79,8 @@ select t_group_by.id, t_group_by.name, avg(t_group_by.score), avg(t_group_by_2.a
 3 | F | 2 | 23.33
 4 | C | 3 | 20
 T_GROUP_BY.ID | T_GROUP_BY.NAME | AVG(T_GROUP_BY.SCORE) | AVG(T_GROUP_BY_2.AGE)
+
+6. WITH WHERE & HAVING CONDITION
+SELECT ID, AVG(SCORE) FROM T_GROUP_BY WHERE ID>2 GROUP BY ID HAVING AVG(SCORE) < 2.5;
+3 | 2.4
+ID | AVG(SCORE)
