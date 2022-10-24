@@ -66,8 +66,8 @@ protected:
     *state_[0] = pair.first;
 
     // set non-null flag true
-    if (*(int *)state_[2]->data() == 0) {
-      *(int *)state_[2]->data() = 1;
+    if (*(int *)state_[1]->data() == 0) {
+      *(int *)state_[1]->data() = 1;
     }
 
     return *state_[0];
