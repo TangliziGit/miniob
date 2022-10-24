@@ -203,7 +203,8 @@ private:
     size_t key_size = key.size();
     auto *tuple = new ProjectTuple();
 
-    for (const size_t index: select_field_to_index_) {
+    for (size_t i = 0; i<select_field_to_index_.size(); i++) {
+      size_t index = select_field_to_index_[i];
       ValueExpr *value = nullptr;
       if (index < key_size) {
         value = new ValueExpr(*key[index]);
@@ -215,7 +216,9 @@ private:
         value = new ValueExpr(func->settle(state));
       }
 
-      tuple->add_cell_spec(new TupleCellSpec(value));
+      auto spec = new TupleCellSpec(value);
+      spec->set_alias(select_fields_[i]->name());
+      tuple->add_cell_spec(spec);
     }
     return tuple;
   }
