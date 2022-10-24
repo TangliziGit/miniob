@@ -81,9 +81,17 @@ template<>
 struct hash<TupleCell> {
   // naive hasher implement
   std::size_t operator()(const TupleCell &cell) const {
-    auto h = cell.attr_type() + cell.length();
-    for (size_t i = 0; i < cell.length(); i++)
-      h += cell.data()[i];
+    auto type = cell.attr_type();
+    if (type == NULLS) return 0;
+    auto h = type + cell.length();
+
+    if (type == CHARS || type == TEXTS) {
+      for (size_t i=0; cell.data()[i] != 0; i++)
+        h += cell.data()[i];
+    } else {
+      for (size_t i = 0; i < cell.length(); i++)
+        h += cell.data()[i];
+    }
     return h;
   }
 };
@@ -91,12 +99,28 @@ struct hash<TupleCell> {
 template<>
 struct equal_to<TupleCell> {
   bool operator()(const TupleCell &lhs, const TupleCell &rhs ) const {
-    if (lhs.attr_type() != rhs.attr_type()) return false;
-    if (lhs.length() != rhs.length()) return false;
+    if (lhs.attr_type() == NULLS && rhs.attr_type() == NULLS) return true;
+    if (lhs.attr_type() == NULLS || rhs.attr_type() == NULLS) return false;
 
-    size_t length = lhs.length();
-    for (size_t i=0; i<length; i++) {
-      if (lhs.data()[i] != rhs.data()[i]) return false;
+    if (lhs.attr_type() != rhs.attr_type()) return false;
+
+    auto type = lhs.attr_type();
+    if (type == CHARS || type == TEXTS) {
+      size_t i = 0;
+      char *ldata = lhs.data();
+      char *rdata = rhs.data();
+
+      for (; ldata[i] != 0 && rdata[i] != 0; i++) {
+        if (ldata[i] != rdata[i]) return false;
+      }
+      if (ldata[i] != rdata[i]) return false;
+    } else {
+      if (lhs.length() != rhs.length()) return false;
+
+      size_t length = lhs.length();
+      for (size_t i=0; i<length; i++) {
+        if (lhs.data()[i] != rhs.data()[i]) return false;
+      }
     }
     return true;
   }
