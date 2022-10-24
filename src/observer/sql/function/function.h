@@ -22,7 +22,8 @@ protected:
     if (argument.size() != fields_.size())
       return RC::INVALID_ARGUMENT;
     for (size_t i=0; i<argument.size(); i++) {
-      if (argument[i].attr_type() != fields_[i]->attr_type())
+      auto type = argument[i].attr_type();
+      if (type != fields_[i]->attr_type() && type != NULLS)
         return RC::INVALID_ARGUMENT;
     }
     return RC::SUCCESS;

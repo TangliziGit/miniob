@@ -114,28 +114,6 @@ public:
       return rc;
     }
 
-    for (auto &p: states_) {
-      auto key = p.first;
-      auto val = p.second;
-
-      std::cout << "key hash: " << std::hash<AggKey>()(key);
-      std::cout << "key: ";
-      for (auto &cell: key) {
-        cell->to_string(std::cout);
-        std::cout << ", ";
-      }
-      std::cout << std::endl << "value: ";
-      for (auto &cells: val) {
-        std::cout << "[";
-        for (auto &cell: cells) {
-          cell->to_string(std::cout);
-          std::cout << ", ";
-        }
-        std::cout << "], ";
-      }
-      std::cout << std::endl;
-    }
-
     next_iter_ = states_.begin();
     return RC::SUCCESS;
   };
