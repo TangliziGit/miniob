@@ -294,7 +294,7 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
   // 如果没有就找范围比较的，但是直接排除不等比较的索引查询. (你知道为什么?)
   const FilterUnit *better_filter = nullptr;
   for (const FilterUnit * filter_unit : filter_units) {
-    if (filter_unit->comp() == NOT_EQUAL||filter_unit->comp()==LIKE||filter_unit->comp()==NOT_LIKE) {
+    if (filter_unit->comp() == NOT_EQUAL||filter_unit->comp()==LIKE||filter_unit->comp()==NOT_LIKE||filter_unit->comp()==IS) {
       continue;
     }
 
@@ -305,6 +305,11 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
       std::swap(left, right);
     }else{
       /* 其他情况没法用索引 */
+      continue;
+    }
+    ValueExpr &right_value_expr = *(ValueExpr *)right;
+    if(right_value_expr.value_type() == NULLS){
+      /* nulls 不能用索引 */
       continue;
     }
     FieldExpr &left_field_expr = *(FieldExpr *)left;

@@ -42,7 +42,7 @@ RC TableMeta::init_sys_fields()
 {
   sys_fields_.reserve(1);
   FieldMeta field_meta;
-  RC rc = field_meta.init(Trx::trx_field_name(), Trx::trx_field_type(), 0, Trx::trx_field_len(), false);
+  RC rc = field_meta.init(Trx::trx_field_name(), Trx::trx_field_type(), 0, Trx::trx_field_len(), false, false);
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to init trx field. rc = %d:%s", rc, strrc(rc));
     return rc;
@@ -82,13 +82,13 @@ RC TableMeta::init(const char *name, int field_num, const AttrInfo attributes[])
 
   for (int i = 0; i < field_num; i++) {
     const AttrInfo &attr_info = attributes[i];
-    rc = fields_[i + sys_fields_.size()].init(attr_info.name, attr_info.type, field_offset, attr_info.length, true);
+    rc = fields_[i + sys_fields_.size()].init(attr_info.name, attr_info.type, field_offset, attr_info.length, true,attr_info.nullable);
     if (rc != RC::SUCCESS) {
       LOG_ERROR("Failed to init field meta. table name=%s, field name: %s", name, attr_info.name);
       return rc;
     }
-
-    field_offset += attr_info.length;
+    /* 加上null字段,最末尾字节 */
+    field_offset += attr_info.length + 1;
   }
 
   record_size_ = field_offset;
@@ -268,7 +268,8 @@ int TableMeta::deserialize(std::istream &is)
 
   name_.swap(table_name);
   fields_.swap(fields);
-  record_size_ = fields_.back().offset() + fields_.back().len() - fields_.begin()->offset();
+  /* +一字节为Null */
+  record_size_ = fields_.back().offset() + fields_.back().len() + 1 - fields_.begin()->offset();
 
   const Json::Value &indexes_value = table_value[FIELD_INDEXES];
   if (!indexes_value.empty()) {

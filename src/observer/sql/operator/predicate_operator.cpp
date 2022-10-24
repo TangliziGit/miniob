@@ -73,6 +73,13 @@ bool PredicateOperator::do_predicate(Tuple &tuple)
     TupleCell right_cell;
     left_expr->get_value(tuple, left_cell);
     right_expr->get_value(tuple, right_cell);
+    if(left_cell.attr_type()==NULLS||right_cell.attr_type()==NULLS){
+      /* 如果是null,除is的任何比较都是false */
+      if( comp==IS ){
+        return left_cell.is(right_cell);
+      }
+      return false;
+    }
     if(comp == LIKE||comp == NOT_LIKE){
       bool is_like = left_cell.like(right_cell);
       if((comp == LIKE && !is_like)||(comp==NOT_LIKE&&is_like)){

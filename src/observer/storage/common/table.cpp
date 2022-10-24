@@ -352,8 +352,8 @@ const TableMeta &Table::table_meta() const
   return table_meta_;
 }
 
-RC Table::make_record(int value_num, const Value *values, char *&record_out)
-{
+static int mystery_number = 0604;
+RC Table::make_record(int value_num, const Value *values, char *&record_out){
   // 检查字段类型是否一致
   if (value_num + table_meta_.sys_field_num() != table_meta_.field_num()) {
     LOG_WARN("Input values don't match the table's schema, table name:%s", table_meta_.name());
@@ -364,7 +364,7 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out)
   for (int i = 0; i < value_num; i++) {
     const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
     const Value &value = values[i];
-    if (field->type() != value.type) {
+    if (field->type() != value.type&&(!field->nullable()||value.type!=NULLS)) {
       LOG_ERROR("Invalid value type. table name =%s, field name=%s, type=%d, but given=%d",
           table_meta_.name(),
           field->name(),
@@ -388,7 +388,14 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out)
         copy_len = data_len + 1;
       }
     }
-    memcpy(record + field->offset(), value.data, copy_len);
+    if(value.type!=NULLS){
+       memcpy(record + field->offset(), value.data, copy_len);
+       *(char *)(record + field->offset() + field->len()) = 0;
+    } else {
+      /* null record 最后一字节为1,其余字节为mystery_num */
+      memset(record + field->offset(),mystery_number, field->len());
+      *(char *)(record + field->offset() + field->len()) = 1;
+    }
   }
 
   record_out = record;

@@ -137,7 +137,8 @@ public:
     const TupleCellSpec *spec = speces_[index];
     FieldExpr *field_expr = (FieldExpr *)spec->expression();
     const FieldMeta *field_meta = field_expr->field().meta();
-    cell.set_type(field_meta->type());
+    bool is_null = *(char *)(this->record_->data() + field_meta->offset() + field_meta->len()) == 1;
+    cell.set_type(is_null ? NULLS : field_meta->type());
     cell.set_data(this->record_->data() + field_meta->offset());
     cell.set_length(field_meta->len());
     return RC::SUCCESS;

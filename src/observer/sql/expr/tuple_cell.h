@@ -47,6 +47,7 @@ public:
   int compare(const TupleCell &other) const;
 
   bool like(const TupleCell &other) const;
+  bool is(const TupleCell &other) const;
 
   TupleCell cast_to(const TupleCell &target) const;
   std::pair<TupleCell, RC> add(const TupleCell &rhs) const;
@@ -60,6 +61,9 @@ public:
   }
 
   int length() const { return length_; }
+  bool is_null()const {
+    return attr_type_ == NULLS;
+  }
 
   AttrType attr_type() const
   {

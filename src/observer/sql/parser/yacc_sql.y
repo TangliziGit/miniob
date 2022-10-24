@@ -118,12 +118,15 @@ ParserContext *get_context(yyscan_t scanner)
         NE
         NOT
         LIKE_T
+        IS_T
         UNIQUE
         INNER
         JOIN
 		ASC
 		ORDER
 		BY
+		NULL_T
+        NULLABLE
 %union {
   struct _Attr *attr;
   struct _Condition *condition1;
@@ -150,6 +153,7 @@ ParserContext *get_context(yyscan_t scanner)
 %type <value1> value;
 %type <number> number;
 %type <function1> function;
+%type <number> nullable
 
 %%
 
@@ -266,23 +270,29 @@ attr_def_list: %empty
     /* empty */
     | COMMA attr_def attr_def_list {    }
     ;
-    
+
 attr_def:
-    ID type LBRACE number RBRACE 
+    ID type LBRACE number RBRACE nullable
 		{
 			AttrInfo attribute;
-			attr_info_init(&attribute, $1, $2, $4);
+			attr_info_init(&attribute, $1, $2, $4,$6);
 			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
 			CONTEXT->value_length++;
 		}
-    |ID type
+    |ID type nullable
 		{
 			AttrInfo attribute;
-			attr_info_init_no_length(&attribute,$1, $2);
+			attr_info_init_no_length(&attribute,$1, $2,$3);
 			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
 			CONTEXT->value_length++;
 		}
     ;
+nullable:%empty{
+	    $$=0;
+	 }
+    |NULLABLE{
+		$$=1;
+};
 number:
 		NUMBER {$$ = $1;}
 		;
@@ -357,7 +367,11 @@ value:
 		$1 = substr($1,1,strlen($1)-2);
 		if(value_init_date(&CONTEXT->values[CONTEXT->value_length++], $1)<0){
 		  CONTEXT->ssql->date_parse_err = -1;
-		};
+		}
+		$$=&CONTEXT->values[CONTEXT->value_length-1];
+	}
+	|NULL_T{
+  		value_init_null(&CONTEXT->values[CONTEXT->value_length++]);
 		$$=&CONTEXT->values[CONTEXT->value_length-1];
 	}
     ;
@@ -648,6 +662,7 @@ comOp:
     | NE { CONTEXT->comp = NOT_EQUAL; }
 	| LIKE_T {CONTEXT->comp = LIKE;}
 	| NOT LIKE_T {CONTEXT->comp = NOT_LIKE;}
+	| IS_T {CONTEXT->comp = IS;}
     ;
 
 load_data:

@@ -64,7 +64,7 @@ RC InsertStmt::create(Db *db, const Inserts &inserts, Stmt *&stmt)
       const FieldMeta *field_meta = table_meta.field(i + sys_field_num);
       const AttrType field_type = field_meta->type();
       const AttrType value_type = vals[i].type;
-      if (field_type != value_type) {
+      if (field_type != value_type &&(!field_meta->nullable()||value_type!=NULLS)) {
         RC rc = cast_to(&newVals[i], field_type);
         if (rc != RC::SUCCESS) {
           return rc;

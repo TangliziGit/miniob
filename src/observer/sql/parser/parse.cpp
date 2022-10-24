@@ -129,10 +129,16 @@ int value_init_date(Value* value, const char* v) {
     return 1;
 }
 
+void value_init_null(Value* value) {
+  value->type = NULLS;
+}
+
 void value_destroy(Value *value)
 {
   value->type = UNDEFINED;
-  free(value->data);
+  if(value->type != NULLS){
+    free(value->data);
+  }
   value->data = nullptr;
 }
 
@@ -168,14 +174,16 @@ void condition_destroy(Condition *condition)
   }
 }
 
-void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length)
+void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length,int nullable)
 {
+  attr_info->nullable = nullable;
   attr_info->name = strdup(name);
   attr_info->type = type;
   attr_info->length = length;
 }
-void attr_info_init_no_length(AttrInfo *attr_info, const char *name, AttrType type)
+void attr_info_init_no_length(AttrInfo *attr_info, const char *name, AttrType type,int nullable)
 {
+  attr_info->nullable = nullable;
   attr_info->name = strdup(name);
   attr_info->type = type;
   int len = 4;

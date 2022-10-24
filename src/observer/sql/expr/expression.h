@@ -93,6 +93,9 @@ public:
   virtual ~ValueExpr() = default;
 
   RC get_value(const Tuple &tuple, TupleCell & cell) const override;
+  AttrType value_type(){
+    return tuple_cell_.attr_type();
+  }
   ExprType type() const override
   {
     return ExprType::VALUE;

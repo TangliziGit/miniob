@@ -1502,7 +1502,7 @@ void BplusTreeHandler::free_key(char *key)
   mem_pool_item_->free(key);
 }
 
-RC BplusTreeHandler::insert_entry(const char *user_key[MAX_NUM], const RID *rid)
+RC BplusTreeHandler::insert_entry(const char *user_key[MAX_NUM], const RID *rid,bool has_null)
 {
   if (user_key == nullptr || rid == nullptr) {
     LOG_WARN("Invalid arguments, key is empty or rid is empty");
@@ -1521,19 +1521,22 @@ RC BplusTreeHandler::insert_entry(const char *user_key[MAX_NUM], const RID *rid)
     return rc;
   }
 
-  if (file_header_.is_unique) {
+  if (file_header_.is_unique&&!has_null) {
+    /* 字段不存在null且是unique的索引 */
     /* 找是否已经存在相同的 attr_key */
     Frame *frame;
     /* 修改比较器为只比较attr_key,不比较最后的rid */
     key_comparator_.set_compare_rid(false);
     RC rc = find_leaf(key, frame);
     if (rc != RC::SUCCESS) {
+      key_comparator_.set_compare_rid(true);
       mem_pool_item_->free(key);
       return rc;
     }
     LeafIndexNodeHandler leaf_node(file_header_, frame);
     bool found = false;
     leaf_node.lookup(key_comparator_, key,&found);
+    key_comparator_.set_compare_rid(true);
     if (found) {
       disk_buffer_pool_->unpin_page(frame);
       mem_pool_item_->free(key);

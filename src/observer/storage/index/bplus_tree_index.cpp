@@ -74,10 +74,12 @@ RC BplusTreeIndex::close()
 RC BplusTreeIndex::insert_entry(const char *record, const RID *rid)
 {
   static const char *attr_ptr[MAX_NUM];
-  for (size_t i = 0; i < field_meta_.size();i++){
+  bool has_null = false;
+  for (size_t i = 0; i < field_meta_.size(); i++) {
     attr_ptr[i] = record + field_meta_[i].offset();
+    has_null |= *(char *)(record + field_meta_[i].offset() + field_meta_[i].len()) == 1;
   }
-  return index_handler_.insert_entry(attr_ptr, rid);
+  return index_handler_.insert_entry(attr_ptr, rid, has_null);
 }
 
 RC BplusTreeIndex::delete_entry(const char *record, const RID *rid)

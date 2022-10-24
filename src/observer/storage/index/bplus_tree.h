@@ -451,7 +451,7 @@ public:
    * 即向索引中插入一个值为（user_key，rid）的键值对
    * @note 这里假设user_key的内存大小与attr_length 一致
    */
-  RC insert_entry(const char *user_key[MAX_NUM], const RID *rid);
+  RC insert_entry(const char *user_key[MAX_NUM], const RID *rid,bool has_null);
   RC insert_entry(const char *user_key, const RID *rid);
 
   /**

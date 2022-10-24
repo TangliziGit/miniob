@@ -29,6 +29,9 @@ void TupleCell::to_string(std::ostream &os) const
     float v = *(float *)data_;
     os << double2string(v);
   } break;
+  case NULLS:{
+    os << "null";
+  }
   case TEXTS:
   case CHARS: {
     for (int i = 0; i < length_; i++) {
@@ -77,6 +80,10 @@ int TupleCell::compare(const TupleCell &other) const
     return lhs.compare(rhs);
   }
   return -1; // TODO return rc?
+}
+
+bool TupleCell::is(const TupleCell &other) const{
+  return attr_type_ == NULLS && other.attr_type_ == NULLS;
 }
 
 bool TupleCell::like(const TupleCell &other) const
@@ -161,6 +168,12 @@ std::pair<TupleCell, RC> TupleCell::add(const TupleCell &other) const {
 }
 
 std::pair<TupleCell, RC> TupleCell::div(const TupleCell &other) const {
+  if(other.attr_type_ == NULLS){
+    return {*this, SUCCESS};
+  }
+  if(this->attr_type_==NULLS){
+    return {other, SUCCESS};
+  }
   auto lhs = this->cast_to(other);
   auto rhs = other.cast_to(*this);
   if (lhs.attr_type_ != rhs.attr_type_) {
@@ -186,6 +199,12 @@ std::pair<TupleCell, RC> TupleCell::div(const TupleCell &other) const {
 }
 
 std::pair<TupleCell, RC> TupleCell::min(const TupleCell &other) const {
+  if(other.attr_type_ == NULLS){
+    return {*this, SUCCESS};
+  }
+  if(this->attr_type_==NULLS){
+    return {other, SUCCESS};
+  }
   auto lhs = this->cast_to(other);
   auto rhs = other.cast_to(*this);
   if (lhs.attr_type_ != rhs.attr_type_) {
@@ -219,6 +238,12 @@ std::pair<TupleCell, RC> TupleCell::min(const TupleCell &other) const {
 }
 
 std::pair<TupleCell, RC> TupleCell::max(const TupleCell &other) const {
+  if(other.attr_type_ == NULLS){
+    return {*this, SUCCESS};
+  }
+  if(this->attr_type_==NULLS){
+    return {other, SUCCESS};
+  }
   auto lhs = this->cast_to(other);
   auto rhs = other.cast_to(*this);
   if (lhs.attr_type_ != rhs.attr_type_) {
