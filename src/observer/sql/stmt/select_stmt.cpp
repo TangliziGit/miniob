@@ -46,6 +46,13 @@ static void wildcard_fields(Table *table, std::vector<AbstractField *> &field_me
   }
 }
 
+bool same_field_exists(const std::vector<FunctionField *> &fields, AbstractField &field) {
+  for (const auto &f: fields) {
+    if (f->name() == field.name()) return true;
+  }
+  return false;
+}
+
 RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
 {
   if (nullptr == db) {
@@ -254,6 +261,41 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
     return rc;
   }
 
+  std::vector<FunctionField *> hidden_agg_fields;
+  for (size_t i = 0; i < select_sql.having_condition_num; i++) {
+    auto condition = select_sql.having_conditions[i];
+
+    if (condition.left_is_attr && condition.left_attr.function != nullptr) {
+      auto func_attr = condition.left_attr.function;
+      auto result = FunctionField::make(tables[0], table_map, func_attr);
+      if (result.second != RC::SUCCESS) {
+        return result.second;
+      }
+
+      bool is_agg = FunctionRegister::is_aggregation(func_attr->function_name);
+      has_aggregation |= is_agg;
+      if (is_agg && !same_field_exists(agg_fields, *result.first)) {
+        agg_fields.push_back(result.first);
+        hidden_agg_fields.push_back(result.first);
+      }
+    }
+
+    if (condition.right_is_attr && condition.right_attr.function != nullptr) {
+      auto func_attr = condition.right_attr.function;
+      auto result = FunctionField::make(tables[0], table_map, func_attr);
+      if (result.second != RC::SUCCESS) {
+        return result.second;
+      }
+
+      bool is_agg = FunctionRegister::is_aggregation(func_attr->function_name);
+      has_aggregation |= is_agg;
+      if (is_agg && !same_field_exists(agg_fields, *result.first)) {
+        agg_fields.push_back(result.first);
+        hidden_agg_fields.push_back(result.first);
+      }
+    }
+  }
+
   // everything alright
   SelectStmt *select_stmt = new SelectStmt();
   select_stmt->tables_.swap(tables);
@@ -263,6 +305,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   select_stmt->having_filter_stmt_ = having_filter_stmt;
   select_stmt->has_aggregation_ = has_aggregation;
   select_stmt->aggregation_fields_ = agg_fields;
+  select_stmt->hidden_aggregation_fields_ = hidden_agg_fields;
   select_stmt->order_field_ = order_field;
   select_stmt->order_flag_ = select_sql.order_flag;
   stmt = select_stmt;

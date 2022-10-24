@@ -25,7 +25,8 @@ protected:
   }
 
   TupleCell calculate(const std::vector<TupleCell> &argument) override {
-    // TODO(chunxu): check if null
+    if (argument[0].is_null()) return *state_[0];
+
     auto data = (int *)state_[0]->data();
     (*data)++;
     return *state_[0];

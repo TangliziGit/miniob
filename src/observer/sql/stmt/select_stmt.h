@@ -44,6 +44,7 @@ public:
   FilterStmt *having_filter_stmt() const { return having_filter_stmt_; }
   bool has_aggregation() const { return has_aggregation_; }
   const std::vector<FunctionField *> &aggregation_fields() const { return aggregation_fields_; }
+  const std::vector<FunctionField *> &hidden_aggregation_fields() const { return hidden_aggregation_fields_; }
 
 private:
   std::vector<AbstractField *> query_fields_;
@@ -54,6 +55,7 @@ private:
   FilterStmt *having_filter_stmt_ = nullptr;
   bool has_aggregation_ = false;
   std::vector<FunctionField *> aggregation_fields_;
+  std::vector<FunctionField *> hidden_aggregation_fields_;
   std::vector<Field *> group_by_fields_;
 };
 

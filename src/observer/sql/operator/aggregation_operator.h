@@ -45,12 +45,14 @@ public:
   AggregationOperator(
       std::vector<AbstractField *> select_fields,
       std::vector<FunctionField *> aggregation_fields,
+      std::vector<FunctionField *> hidden_aggregation_fields,
       std::vector<Field *> group_by_fields,
       FilterStmt *having_fields)
       : select_field_to_index_(),
         select_fields_(std::move(select_fields)),
         group_by_fields_(std::move(group_by_fields)),
         aggregation_fields_(std::move(aggregation_fields)),
+        hidden_aggregation_fields_(std::move(hidden_aggregation_fields)),
         predicate_oper_(having_fields) {}
 
   RC open() override {
@@ -69,6 +71,14 @@ public:
     select_field_to_index_.reserve(select_fields_.size());
     for (size_t i=0; i<select_fields_.size(); i++) {
       auto &field = select_fields_[i];
+      if (field_to_index.count(field->name()) == 0) {
+        return RC::MISMATCH;
+      }
+      select_field_to_index_.push_back(field_to_index[field->name()]);
+    }
+
+    for (size_t i=0; i<hidden_aggregation_fields_.size(); i++) {
+      auto &field = hidden_aggregation_fields_[i];
       if (field_to_index.count(field->name()) == 0) {
         return RC::MISMATCH;
       }
@@ -114,28 +124,6 @@ public:
       return rc;
     }
 
-    for (auto &p: states_) {
-      auto key = p.first;
-      auto val = p.second;
-
-      std::cout << "key hash: " << std::hash<AggKey>()(key);
-      std::cout << "key: ";
-      for (auto &cell: key) {
-        cell->to_string(std::cout);
-        std::cout << ", ";
-      }
-      std::cout << std::endl << "value: ";
-      for (auto &cells: val) {
-        std::cout << "[";
-        for (auto &cell: cells) {
-          cell->to_string(std::cout);
-          std::cout << ", ";
-        }
-        std::cout << "], ";
-      }
-      std::cout << std::endl;
-    }
-
     next_iter_ = states_.begin();
     return RC::SUCCESS;
   };
@@ -150,6 +138,7 @@ public:
       // if having clause not passed then continue next
       if (predicate_oper_.do_predicate(*tuple_)) {
         iter++;
+        tuple_->resize_cell_spec(select_fields_.size());
         return SUCCESS;
       }
     }
@@ -217,7 +206,11 @@ private:
       }
 
       auto spec = new TupleCellSpec(value);
-      spec->set_alias(select_fields_[i]->name());
+      if (i < select_fields_.size()) {
+        spec->set_alias(select_fields_[i]->name());
+      } else {
+        spec->set_alias(hidden_aggregation_fields_[i-select_fields_.size()]->name());
+      }
       tuple->add_cell_spec(spec);
     }
     return tuple;
@@ -233,6 +226,7 @@ private:
   std::vector<AbstractField *> select_fields_;
   std::vector<Field *> group_by_fields_;
   std::vector<FunctionField *> aggregation_fields_;
+  std::vector<FunctionField *> hidden_aggregation_fields_;
   std::vector<Function *> functions_;
 
   PredicateOperator predicate_oper_;

@@ -35,3 +35,4 @@ insert into t_group_by_2 values(4, 20);
 
 -- echo 6. with where & having condition
 -- sort select id, avg(score) from t_group_by where id>2 group by id having avg(score) < 2.5;
+-- sort select id, avg(score) from t_group_by where id>2 group by id having count(*) > 0;
