@@ -382,7 +382,7 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out){
     const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
     const Value &value = values[i];
     size_t copy_len = field->len();
-    if (field->type() == CHARS || field->type() == TEXTS) {
+    if (value.type !=NULLS&&(field->type() == CHARS || field->type() == TEXTS)) {
       const size_t data_len = strlen((const char *)value.data);
       if (copy_len > data_len) {
         copy_len = data_len + 1;
