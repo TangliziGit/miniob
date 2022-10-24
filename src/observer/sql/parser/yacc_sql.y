@@ -292,7 +292,10 @@ nullable:%empty{
 	 }
     |NULLABLE{
 		$$=1;
-};
+	 }
+	|NOT NULL_T{
+		$$=0;
+	};
 number:
 		NUMBER {$$ = $1;}
 		;
@@ -663,6 +666,7 @@ comOp:
 	| LIKE_T {CONTEXT->comp = LIKE;}
 	| NOT LIKE_T {CONTEXT->comp = NOT_LIKE;}
 	| IS_T {CONTEXT->comp = IS;}
+	| IS_T NOT{CONTEXT->comp = IS_NOT;}
     ;
 
 load_data:

@@ -29,8 +29,8 @@ typedef enum
   CHARS,
   INTS,
   FLOATS,
-  TEXTS,
   DATES,
+  TEXTS,
   NULLS,
 } AttrType;
 
@@ -73,6 +73,7 @@ typedef enum {
   NOT_LIKE,
   LIKE,
   IS,
+  IS_NOT,
   NO_OP
 } CompOp;
 

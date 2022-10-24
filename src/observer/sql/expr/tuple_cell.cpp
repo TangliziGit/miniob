@@ -168,12 +168,6 @@ std::pair<TupleCell, RC> TupleCell::add(const TupleCell &other) const {
 }
 
 std::pair<TupleCell, RC> TupleCell::div(const TupleCell &other) const {
-  if(other.attr_type_ == NULLS){
-    return {*this, SUCCESS};
-  }
-  if(this->attr_type_==NULLS){
-    return {other, SUCCESS};
-  }
   auto lhs = this->cast_to(other);
   auto rhs = other.cast_to(*this);
   if (lhs.attr_type_ != rhs.attr_type_) {
@@ -199,12 +193,6 @@ std::pair<TupleCell, RC> TupleCell::div(const TupleCell &other) const {
 }
 
 std::pair<TupleCell, RC> TupleCell::min(const TupleCell &other) const {
-  if(other.attr_type_ == NULLS){
-    return {*this, SUCCESS};
-  }
-  if(this->attr_type_==NULLS){
-    return {other, SUCCESS};
-  }
   auto lhs = this->cast_to(other);
   auto rhs = other.cast_to(*this);
   if (lhs.attr_type_ != rhs.attr_type_) {
@@ -238,12 +226,6 @@ std::pair<TupleCell, RC> TupleCell::min(const TupleCell &other) const {
 }
 
 std::pair<TupleCell, RC> TupleCell::max(const TupleCell &other) const {
-  if(other.attr_type_ == NULLS){
-    return {*this, SUCCESS};
-  }
-  if(this->attr_type_==NULLS){
-    return {other, SUCCESS};
-  }
   auto lhs = this->cast_to(other);
   auto rhs = other.cast_to(*this);
   if (lhs.attr_type_ != rhs.attr_type_) {

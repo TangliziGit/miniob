@@ -78,6 +78,9 @@ bool PredicateOperator::do_predicate(Tuple &tuple)
       if( comp==IS ){
         return left_cell.is(right_cell);
       }
+      if(comp == IS_NOT){
+        return !left_cell.is(right_cell);
+      }
       return false;
     }
     if(comp == LIKE||comp == NOT_LIKE){
