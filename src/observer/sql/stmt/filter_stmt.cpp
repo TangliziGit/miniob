@@ -137,7 +137,7 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
   }
 
   if (condition.right_is_attr) {
-    if (condition.left_attr.function != nullptr) {
+    if (condition.right_attr.function != nullptr) {
       auto result = create_function_expr(condition.right_attr.function, default_table, *tables);
       if (result.second != SUCCESS) {
         return result.second;
