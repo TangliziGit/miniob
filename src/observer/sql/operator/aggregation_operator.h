@@ -10,6 +10,35 @@ using AggKey = std::vector<TupleCell *>;
 using AggState = std::vector<TupleCell *>;
 using AggStates = std::vector<AggState>;
 
+namespace std {
+template<>
+struct hash<AggKey> {
+  // better hash function implementation
+  // ref: https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
+  std::size_t operator()(const AggKey &key) const {
+    std::hash<TupleCell> hasher;
+    std::size_t seed = key.size();
+    for(auto& cell: key) {
+      seed ^= hasher(*cell) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+    return seed;
+  }
+};
+
+template<>
+struct equal_to<AggKey> {
+  bool operator()(const AggKey &lhs, const AggKey &rhs ) const {
+    if (lhs.size() != rhs.size()) return false;
+
+    size_t len = lhs.size();
+    for (size_t i=0; i<len; i++) {
+      if (!std::equal_to<TupleCell>{}(*lhs[i], *rhs[i])) return false;
+    }
+    return true;
+  }
+};
+}
+
 class AggregationOperator : public Operator
 {
 public:
@@ -85,6 +114,28 @@ public:
       return rc;
     }
 
+    for (auto &p: states_) {
+      auto key = p.first;
+      auto val = p.second;
+
+      std::cout << "key hash: " << std::hash<AggKey>()(key);
+      std::cout << "key: ";
+      for (auto &cell: key) {
+        cell->to_string(std::cout);
+        std::cout << ", ";
+      }
+      std::cout << std::endl << "value: ";
+      for (auto &cells: val) {
+        std::cout << "[";
+        for (auto &cell: cells) {
+          cell->to_string(std::cout);
+          std::cout << ", ";
+        }
+        std::cout << "], ";
+      }
+      std::cout << std::endl;
+    }
+
     next_iter_ = states_.begin();
     return RC::SUCCESS;
   };
@@ -98,6 +149,7 @@ public:
 
       // if having clause not passed then continue next
       if (predicate_oper_.do_predicate(*tuple_)) {
+        iter++;
         return SUCCESS;
       }
     }
@@ -112,11 +164,12 @@ private:
   std::pair<AggKey, RC> make_key(const Tuple *tuple) {
     std::vector<TupleCell *> key;
     for (const auto field: group_by_fields_) {
-      TupleCell cell;
-      RC rc = tuple->find_cell(*field, cell);
+      auto cell = new TupleCell{};
+      RC rc = tuple->find_cell(*field, *cell);
       if (rc != RC::SUCCESS) {
         return { {}, rc };
       }
+      key.push_back(cell);
     }
     return { key, SUCCESS };
   }
@@ -168,10 +221,10 @@ private:
   }
 
 private:
-  std::map<AggKey, AggStates>::iterator next_iter_;
+  std::unordered_map<AggKey, AggStates>::iterator next_iter_;
 
   ProjectTuple *tuple_{};
-  std::map<AggKey, AggStates> states_;
+  std::unordered_map<AggKey, AggStates> states_;
 
   std::vector<size_t> select_field_to_index_;
   std::vector<AbstractField *> select_fields_;

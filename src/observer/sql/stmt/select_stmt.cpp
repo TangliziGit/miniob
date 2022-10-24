@@ -242,7 +242,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
       return RC::SCHEMA_FIELD_MISSING;
     }
 
-    query_fields.push_back(new Field(table, field_meta));
+    group_by_fields.push_back(new Field(table, field_meta));
   }
 
   // collect aggregation conditions in having clause

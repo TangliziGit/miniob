@@ -75,3 +75,31 @@ private:
   int length_ = -1;
   char *data_ = nullptr; // real data. no need to move to field_meta.offset
 };
+
+namespace std {
+template<>
+struct hash<TupleCell> {
+  // naive hasher implement
+  std::size_t operator()(const TupleCell &cell) const {
+    auto h = cell.attr_type() + cell.length();
+    for (size_t i = 0; i < cell.length(); i++)
+      h += cell.data()[i];
+    return h;
+  }
+};
+
+template<>
+struct equal_to<TupleCell> {
+  bool operator()(const TupleCell &lhs, const TupleCell &rhs ) const {
+    if (lhs.attr_type() != rhs.attr_type()) return false;
+    if (lhs.length() != rhs.length()) return false;
+
+    size_t length = lhs.length();
+    for (size_t i=0; i<length; i++) {
+      if (lhs.data()[i] != rhs.data()[i]) return false;
+    }
+    return true;
+  }
+};
+}
+

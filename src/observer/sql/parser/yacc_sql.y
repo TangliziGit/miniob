@@ -493,13 +493,10 @@ group_by_list: %empty
 	;
 
 having: %empty
-	| HAVING having_condition having_condition_list {
-
-	}
-	;
+	| HAVING having_condition having_condition_list {};
 
 having_condition_list: %empty
-	| AND having_condition having_condition_list {}
+	| AND having_condition having_condition_list {};
 
 having_condition:
     	function comOp value {
