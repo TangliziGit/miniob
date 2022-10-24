@@ -453,6 +453,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     oper = new AggregationOperator(
         select_stmt->query_fields(),
         select_stmt->aggregation_fields(),
+        select_stmt->hidden_aggregation_fields(),
         select_stmt->group_by_fields(),
         select_stmt->having_filter_stmt()
     );

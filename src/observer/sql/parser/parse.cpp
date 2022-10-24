@@ -32,7 +32,7 @@ void parameter_init_attr(Parameter *parameter, RelAttr *attr) {
 }
 
 void parameter_init_value(Parameter *parameter, Value *value) {
-  parameter->is_value = 0;
+  parameter->is_value = 1;
   parameter->attribute = nullptr;
   parameter->value = new Parameter::Value {
       .type = value->type,

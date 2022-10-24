@@ -219,6 +219,10 @@ public:
   {
     speces_.push_back(spec);
   }
+  void resize_cell_spec(size_t spec_num) {
+    speces_.resize(spec_num);
+  }
+
   int cell_num() const override
   {
     return speces_.size();

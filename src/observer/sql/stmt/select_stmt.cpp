@@ -261,6 +261,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
     return rc;
   }
 
+  std::vector<FunctionField *> hidden_agg_fields;
   for (size_t i = 0; i < select_sql.having_condition_num; i++) {
     auto condition = select_sql.having_conditions[i];
 
@@ -275,6 +276,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
       has_aggregation |= is_agg;
       if (is_agg && !same_field_exists(agg_fields, *result.first)) {
         agg_fields.push_back(result.first);
+        hidden_agg_fields.push_back(result.first);
       }
     }
 
@@ -289,6 +291,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
       has_aggregation |= is_agg;
       if (is_agg && !same_field_exists(agg_fields, *result.first)) {
         agg_fields.push_back(result.first);
+        hidden_agg_fields.push_back(result.first);
       }
     }
   }
@@ -302,6 +305,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   select_stmt->having_filter_stmt_ = having_filter_stmt;
   select_stmt->has_aggregation_ = has_aggregation;
   select_stmt->aggregation_fields_ = agg_fields;
+  select_stmt->hidden_aggregation_fields_ = hidden_agg_fields;
   select_stmt->order_field_ = order_field;
   select_stmt->order_flag_ = select_sql.order_flag;
   stmt = select_stmt;
