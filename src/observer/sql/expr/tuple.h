@@ -100,6 +100,13 @@ class RowTuple : public Tuple
 {
 public:
   RowTuple() = default;
+  RowTuple(RowTuple& row_tuple) {
+    this->table_ = row_tuple.table_;
+    this->record_ = new Record(*row_tuple.record_);
+    for (size_t i = 0; i < row_tuple.speces_.size(); i++) {
+      this->speces_.push_back(row_tuple.speces_[i]);
+    }
+  }
   virtual ~RowTuple()
   {
     for (TupleCellSpec *spec : speces_) {
@@ -278,6 +285,12 @@ class MulProjectTuple: public Tuple
 public:
   MulProjectTuple() = default;
   virtual ~MulProjectTuple(){}
+  MulProjectTuple(MulProjectTuple &mul_tuple) {
+    for (int i = 0; i < mul_tuple.tuples_.size(); i++) {
+      this->tuples_.push_back(new RowTuple(static_cast<RowTuple&>(*mul_tuple.tuples_[i])));
+    }
+    this->name_map_ = mul_tuple.name_map_;
+  }
 
   void init(const std::map<std::string,int> &name_map){
     this->tuples_.resize(name_map.size());

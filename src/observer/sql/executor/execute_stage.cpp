@@ -33,6 +33,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/delete_operator.h"
 #include "sql/operator/update_operator.h"
 #include "sql/operator/project_operator.h"
+#include "sql/operator/order_by_operator.h"
 #include "sql/operator/multi_table_operator.h"
 #include "sql/operator/aggregation_operator.h"
 #include "sql/stmt/stmt.h"
@@ -445,8 +446,16 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   for(auto scan_oper:scan_opers){
      mul_oper.add_child(scan_oper);
   }
+
+  Operator *temp_oper = &mul_oper;
+  if (select_stmt->order_flag() != UNDEFINED) {
+    OrderByOperator *order_oper = new OrderByOperator(select_stmt->order_field(), select_stmt->order_flag());
+    order_oper->add_child(&mul_oper);
+    temp_oper = order_oper;
+  }
+  
   PredicateOperator pred_oper(select_stmt->filter_stmt());
-  pred_oper.add_child(&mul_oper);
+  pred_oper.add_child(temp_oper);
   Operator *oper = nullptr;
   if (select_stmt->has_aggregation()) {
     // TODO(chunxu): add group by and having fields

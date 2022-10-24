@@ -30,7 +30,8 @@ typedef struct ParserContext {
   Value insert_values[MAX_NUM][MAX_NUM];
   Condition conditions[MAX_NUM];
   CompOp comp;
-  RelAttr order_attr;
+  size_t order_attr_size;
+  RelAttr order_attrs[MAX_NUM];
   OrderFlag order_flag;
   size_t id_num;
   char id[MAX_NUM][MAX_NUM];
@@ -418,7 +419,7 @@ select:				/*  select 语句的语法解析树*/
 		selects_append_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
 		selects_append_group_by(&CONTEXT->ssql->sstr.selection, CONTEXT->group_by_attrs, CONTEXT->group_by_attr_length);
 		selects_append_having(&CONTEXT->ssql->sstr.selection, CONTEXT->having_conditions, CONTEXT->having_condition_length);
-
+		selects_append_order(&CONTEXT->ssql->sstr.selection, CONTEXT->order_attrs, CONTEXT->order_attr_size, CONTEXT->order_flag);
 		CONTEXT->ssql->flag=SCF_SELECT;//"select";
 
 		//临时变量清零
@@ -439,8 +440,8 @@ join_attr_list:%empty
    // }
 ;
 order_by:%empty
-    | ORDER BY order_attr order {
-		selects_set_order(&CONTEXT->ssql->sstr.selection, CONTEXT->order_attr, CONTEXT->order_flag);
+    | ORDER BY order_attr order_attr_lists order {
+		
 	}
 	;
 order:%empty {
@@ -457,15 +458,17 @@ order_attr:
     ID  { 
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, $1);
-			CONTEXT->order_attr=attr;
+			CONTEXT->order_attrs[CONTEXT->order_attr_size++]=attr;
     }
     | ID DOT ID {
 			RelAttr attr;
 			relation_attr_init(&attr, $1, $3);
-			CONTEXT->order_attr=attr;
+			CONTEXT->order_attrs[CONTEXT->order_attr_size++]=attr;
 		}
 		;
-
+order_attr_lists:%empty
+    | COMMA order_attr order_attr_lists
+	;
 group_by: %empty
 	| GROUP BY ID group_by_list {
 		RelAttr attr;
