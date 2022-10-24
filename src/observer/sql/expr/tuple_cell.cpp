@@ -31,7 +31,7 @@ void TupleCell::to_string(std::ostream &os) const
   } break;
   case NULLS:{
     os << "null";
-  }
+  } break;
   case TEXTS:
   case CHARS: {
     for (int i = 0; i < length_; i++) {
