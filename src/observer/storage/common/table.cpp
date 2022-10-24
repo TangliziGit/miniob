@@ -759,7 +759,16 @@ RC Table::update_record(Trx *trx, Record *record, const std::vector<const char *
           strrc(rc));
       return rc;
     }
-    memcpy(record->data() + meta->offset(), value[i].data, meta->len());
+    if(value[i].type != AttrType::NULLS){
+       memcpy(record->data() + meta->offset(), value[i].data, meta->len());
+       *(char *)(record->data() + meta->offset() + meta->len()) = 0;
+    } else {
+      if(!meta->nullable()){
+        return RC::SCHEMA_FIELD_MISSING;
+      }
+      memset(record->data() + meta->offset(), mystery_number, meta->len());
+      *(char *)(record->data() + meta->offset() + meta->len()) = 1;
+    }
   }
   // if(trx != nullptr){
   //   trx->init_trx_info(this, *record);

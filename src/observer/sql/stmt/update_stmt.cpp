@@ -49,11 +49,14 @@ RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
       return RC::SCHEMA_FIELD_NOT_EXIST;
     }
     Value new_value = update.value[i];
-    if (attr_meta->type() != update.value[i].type) {
+    if (attr_meta->type() != update.value[i].type&&update.value[i].type!=NULLS) {
       RC rc = cast_to(&new_value, attr_meta->type());
       if (rc != RC::SUCCESS) {
         return rc;
       }
+    }
+    if(update.value[i].type == NULLS && !attr_meta->nullable()){
+      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
     }
     attr_name.emplace_back(update.attribute_name[i]);
     value.emplace_back(new_value);
