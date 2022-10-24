@@ -422,13 +422,15 @@ select:				/*  select 语句的语法解析树*/
 			CONTEXT->value_length = 0;
 	}
 	;
-join_attr:
-     INNER JOIN ID ON condition condition_list{
-		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
-};
+//join_attr:
+    //  INNER JOIN ID ON condition condition_list{
+	//	selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
+   //} 
+//;
 join_attr_list:%empty
-    | join_attr join_attr_list{
-};
+    //| join_attr join_attr_list{
+   // }
+;
 order_by:%empty
     | ORDER BY order_attr order {
 		selects_set_order(&CONTEXT->ssql->sstr.selection, CONTEXT->order_attr, CONTEXT->order_flag);
