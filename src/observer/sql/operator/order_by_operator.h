@@ -53,7 +53,7 @@ public:
     }
 
     while ((rc = child->next()) == RC::SUCCESS) {
-      Tuple * tuple = new MulProjectTuple(static_cast<MulProjectTuple &>(*child->current_tuple()));
+      Tuple * tuple = new CompositeTuple(static_cast<CompositeTuple &>(*child->current_tuple()));
       std::vector<TupleCell *> cells;
       for (int i = 0; i < this->fields_.size(); i++) {
         TupleCell *cell = new TupleCell();

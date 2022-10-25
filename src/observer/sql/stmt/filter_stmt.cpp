@@ -44,7 +44,7 @@ RC FilterStmt::create(Db *db, Table *default_table, std::unordered_map<std::stri
       LOG_WARN("failed to create filter unit. condition index=%d", i);
       return rc;
     }
-    tmp_stmt->filter_units_.push_back(filter_unit);
+    tmp_stmt->filter_units_.insert(filter_unit);
   }
 
   stmt = tmp_stmt;

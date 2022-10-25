@@ -80,9 +80,15 @@ public:
   virtual ~FilterStmt();
 
 public:
-  const std::vector<FilterUnit *> &filter_units() const
+  const std::set<FilterUnit *> &filter_units() const
   {
     return filter_units_;
+  }
+  void add_filter(FilterUnit * filter_unit){
+    filter_units_.insert(filter_unit);
+  }
+  void remove_filter(FilterUnit * filter_unit){
+    filter_units_.erase(filter_unit);
   }
 
 public:
@@ -94,5 +100,5 @@ public:
 			       const Condition &condition, FilterUnit *&filter_unit);
 
 private:
-  std::vector<FilterUnit *>  filter_units_; // 默认当前都是AND关系
+  std::set<FilterUnit *>  filter_units_; // 默认当前都是AND关系
 };

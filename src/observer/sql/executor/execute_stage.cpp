@@ -34,7 +34,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/update_operator.h"
 #include "sql/operator/project_operator.h"
 #include "sql/operator/order_by_operator.h"
-#include "sql/operator/multi_table_operator.h"
+#include "sql/operator/join_operator.h"
 #include "sql/operator/aggregation_operator.h"
 #include "sql/stmt/stmt.h"
 #include "sql/stmt/select_stmt.h"
@@ -284,7 +284,7 @@ void tuple_to_string(std::ostream &os, const Tuple &tuple)
 
 IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
 {
-  const std::vector<FilterUnit *> &filter_units = filter_stmt->filter_units();
+  const std::set<FilterUnit *> &filter_units = filter_stmt->filter_units();
   if (filter_units.empty() ) {
     return nullptr;
   }
@@ -413,6 +413,34 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
   return oper;
 }
 
+static void find_filter(FilterStmt* filter_stmt,const std::map<std::string,int>&name_idx,FilterStmt* out_filter_stmt){
+  const std::set<FilterUnit *> &filter_units = filter_stmt->filter_units();
+  if (filter_units.empty() ) {
+    return;
+  }
+  FilterUnit *better_filter = nullptr;
+  std::vector<FilterUnit *> remove_unit;
+  for (auto filter_unit : filter_units) {
+    Expression *left = filter_unit->left();
+    Expression *right = filter_unit->right();
+    FieldExpr *left_field = nullptr;
+    FieldExpr *right_field = nullptr;
+    if (left->type() == ExprType::FIELD) {
+      left_field = reinterpret_cast<FieldExpr *>(left);
+    }
+    if(right->type() == ExprType::FIELD){
+      right_field = reinterpret_cast<FieldExpr *>(right);
+    }
+    if((left_field==nullptr||name_idx.count(left_field->table_name()))&&(right_field==nullptr || name_idx.count(right_field->table_name()))){
+      out_filter_stmt->add_filter(filter_unit);
+      remove_unit.push_back(filter_unit);
+    }
+  }
+  for(auto filter_unit:remove_unit){
+    filter_stmt->remove_filter(filter_unit);
+  }
+}
+
 RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 {
   SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
@@ -420,42 +448,39 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   RC rc = RC::SUCCESS;
 
   auto tables = select_stmt->tables();
-  std::vector<Operator *> scan_opers;
-  std::map<std::string, int> name_idx_;
-  for (size_t i = 0; i < tables.size();i++){
-    name_idx_[tables[i]->name()] = i;
-    Operator *scan_oper = nullptr;
-    if (tables.size() == 1) {
-      /* todo(yin),find index oper for multi table select */
-       scan_oper =  try_to_create_index_scan_operator(select_stmt->filter_stmt());
+  std::map<std::string, int> name_idx;
+  auto filter = select_stmt->filter_stmt();
+  std::vector<JoinOperator*> join_opers;
+  for (size_t i = 0; i < tables.size(); i++) {
+    Table *table = tables[i];
+    name_idx[tables[i]->name()] = i;
+    FilterStmt *cur_filter = new FilterStmt();
+    find_filter(filter, name_idx, cur_filter);
+    Operator *oper = try_to_create_index_scan_operator(cur_filter);
+    if(oper == nullptr){
+      oper = new TableScanOperator(table);
     }
-    if (nullptr == scan_oper) {
-      scan_oper = new TableScanOperator(tables[i]);
+    join_opers.push_back(new JoinOperator(table, oper, cur_filter));
+    if (i != 0) {
+      join_opers[i]->add_child(join_opers[i - 1]);
     }
-    scan_opers.push_back(scan_oper);
   }
+  join_opers[0]->init(name_idx);
 
-  DEFER([&] () {
-     for(auto scan_oper:scan_opers){
-       delete scan_oper;
-     }
-  });
+  DEFER([&]() { for (auto join_oper:join_opers){
+      delete join_oper;
+    } });
 
-  MultiTableOperator mul_oper;
-  mul_oper.init(name_idx_);
-  for(auto scan_oper:scan_opers){
-     mul_oper.add_child(scan_oper);
-  }
+  Operator *temp_oper = join_opers.back();
+  // if (select_stmt->order_flag() != UNDEFINED) {
+  //   OrderByOperator *order_oper = new OrderByOperator(select_stmt->order_field(), select_stmt->order_flag());
+  //   order_oper->add_child(temp_oper);
+  //   temp_oper = order_oper;
+  // }
 
-  Operator *temp_oper = &mul_oper;
-  if (select_stmt->order_flag() != UNDEFINED) {
-    OrderByOperator *order_oper = new OrderByOperator(select_stmt->order_field(), select_stmt->order_flag());
-    order_oper->add_child(&mul_oper);
-    temp_oper = order_oper;
-  }
-  
   PredicateOperator pred_oper(select_stmt->filter_stmt());
   pred_oper.add_child(temp_oper);
+
   Operator *oper = nullptr;
   if (select_stmt->has_aggregation()) {
     // TODO(chunxu): add group by and having fields

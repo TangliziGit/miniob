@@ -1,38 +1,91 @@
-/* Copyright (c) 2021 Xie Meiyi(xiemeiyi@hust.edu.cn) and OceanBase and/or its affiliates. All rights reserved.
-miniob is licensed under Mulan PSL v2.
-You can use this software according to the terms and conditions of the Mulan PSL v2.
-You may obtain a copy of Mulan PSL v2 at:
-         http://license.coscl.org.cn/MulanPSL2
-THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
-EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
-MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
-See the Mulan PSL v2 for more details. */
-
-//
-// Created by WangYunlai on 2021/6/10.
-//
 
 #pragma once
 
-#include "sql/parser/parse.h"
 #include "sql/operator/operator.h"
+#include "storage/common/table.h"
 #include "rc.h"
+#include "sql/stmt/filter_stmt.h"
+#include "storage/common/field.h"
 
 // TODO fixme
-class JoinOperator : public Operator
+class JoinOperator : public PredicateOperator
 {
 public:
-  JoinOperator(Operator *left, Operator *right)
+  JoinOperator(Table *table,Operator * oper,FilterStmt * filter_stmt):PredicateOperator(filter_stmt),
+  table_(table),right_oper_(oper)
   {}
 
   virtual ~JoinOperator() = default;
+  void init(std::map<std::string,int>name_idx){
+    if(is_base_oper()){
+      tuple_ = new CompositeTuple();
+      tuple_->init(name_idx);
+    }
+  }
+  bool is_base_oper(){
+    return children_.size() == 0;
+  }
+  RC open() override{
+    right_oper_->open();
 
-  RC open() override;
-  RC next() override;
-  RC close() override;
-
+    if (!is_base_oper()) {
+      children_[0]->open();
+      RC rc = RC::SUCCESS;
+      if ((rc = children_[0]->next()) != RC::SUCCESS) {
+        return rc;
+      }
+      tuple_ = children_[0]->current_tuple();
+    }
+    return RC::SUCCESS;
+  }
+  RC next() override{
+    RC rc = RC::SUCCESS;
+    while (1) {
+      rc = right_oper_->next();
+      if (rc != RC::SUCCESS) {
+        if (rc != RC::RECORD_EOF) {
+          return rc;
+        }
+        if (!is_base_oper()){
+          rc = children_[0]->next();
+          if (rc != RC::SUCCESS) {
+            return rc;
+          }
+          rc = right_oper_->open();
+          if (rc != RC::SUCCESS) {
+            return rc;
+          }
+          rc = right_oper_->next();
+          if (rc != RC::SUCCESS) {
+            /* 空表 */
+            return rc;
+          }
+        }
+      }
+      tuple_->set_tuple(table_->name(), right_oper_->current_tuple());
+      if(do_predicate(*tuple_)){
+        return rc;
+      }
+    }
+  }
+  RC close() override{
+    right_oper_->close();
+    if(is_base_oper()){
+      delete tuple_;
+    }else{
+      children_[0]->close();
+    }
+    delete right_oper_;
+    return RC::SUCCESS;
+  }
+  virtual Tuple * current_tuple(){
+    return tuple_;
+  }
+  OperType type() override{
+    return OperType::JOIN;
+  }
 private:
-  Operator *left_ = nullptr;
-  Operator *right_ = nullptr;
-  bool round_done_ = true;
+  Table *table_;
+  Operator *right_oper_;
+  Tuple *tuple_;
 };

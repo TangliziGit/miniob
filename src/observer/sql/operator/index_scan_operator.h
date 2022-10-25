@@ -29,6 +29,9 @@ public:
   RC open() override;
   RC next() override;
   RC close() override;
+  OperType type()override{
+    return OperType::INDEX_SCAN;
+  }
 
   Tuple * current_tuple() override;
 private:

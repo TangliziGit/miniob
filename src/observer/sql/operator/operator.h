@@ -21,8 +21,13 @@ See the Mulan PSL v2 for more details. */
 class Record;
 class TupleCellSpec;
 
-class Operator
-{
+enum class OperType {
+  UNDEFINED,
+  JOIN,
+  TABLE_SCAN,
+  INDEX_SCAN,
+};
+class Operator {
 public:
   Operator()
   {}
@@ -38,7 +43,9 @@ public:
   void add_child(Operator *oper) {
     children_.push_back(oper);
   }
-
+  virtual OperType type(){
+    return OperType::UNDEFINED;
+  }
 
 protected:
   std::vector<Operator *> children_;

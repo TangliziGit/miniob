@@ -70,6 +70,13 @@ public:
   virtual RC  find_cell(const Field &field, TupleCell &cell) const = 0;
   virtual RC  find_cell_by_alias(const char *alias, TupleCell &cell) const = 0;
   virtual RC  cell_spec_at(int index, const TupleCellSpec *&spec) const = 0;
+  virtual RC init(const std::map<std::string, int> &name_map){
+    return RC::UNIMPLENMENT;
+  };
+
+  virtual RC set_tuple(const char *table_name, Tuple *tuple){
+    return RC::UNIMPLENMENT;
+  };
 
   // extract_cells just for function arguments extracting
   std::pair<Function::Arguments, RC> extract_cells(const std::vector<AbstractField *>& fields) const {
@@ -280,25 +287,29 @@ private:
   Tuple *tuple_ = nullptr;
 };
 
-class MulProjectTuple: public Tuple
+class CompositeTuple: public Tuple
 {
 public:
-  MulProjectTuple() = default;
-  virtual ~MulProjectTuple(){}
-  MulProjectTuple(MulProjectTuple &mul_tuple) {
-    for (int i = 0; i < mul_tuple.tuples_.size(); i++) {
-      this->tuples_.push_back(new RowTuple(static_cast<RowTuple&>(*mul_tuple.tuples_[i])));
+  CompositeTuple() = default;
+  virtual ~CompositeTuple(){}
+  CompositeTuple(CompositeTuple &composite_tuple) {
+    for (int i = 0; i < composite_tuple.tuples_.size(); i++) {
+      this->tuples_.push_back(new RowTuple(static_cast<RowTuple&>(*composite_tuple.tuples_[i])));
     }
-    this->name_map_ = mul_tuple.name_map_;
+    this->name_map_ = composite_tuple.name_map_;
   }
 
-  void init(const std::map<std::string,int> &name_map){
+  RC init(const std::map<std::string,int> &name_map)override {
     this->tuples_.resize(name_map.size());
     this->name_map_ = name_map;
   }
 
-  void set_tuple(int idx,Tuple * tuple)
+  RC set_tuple(const char *table_name,Tuple * tuple)override
   {
+    auto itr = name_map_.find(table_name);
+    if(itr == name_map_.end())
+      return RC::SCHEMA_TABLE_EXIST;
+    int idx = itr->second;
     this->tuples_[idx] = tuple;
   }
 
