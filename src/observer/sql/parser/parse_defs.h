@@ -115,7 +115,7 @@ typedef struct {
   Condition having_conditions[MAX_NUM]; // conditions in Having clause               
   size_t order_num;                     // Length of attrs in order by
   RelAttr order_by[MAX_NUM];            // order by field
-  OrderFlag order_flag;                 // DESC or ASC(Default)
+  OrderFlag order_flag[MAX_NUM];        // DESC or ASC(Default)
 } Selects;
 
 // struct of insert
@@ -264,7 +264,7 @@ void attr_info_destroy(AttrInfo *attr_info);
 void selects_init(Selects *selects, ...);
 void selects_append_attribute(Selects *selects, RelAttr *rel_attr);
 void selects_append_relation(Selects *selects, const char *relation_name);
-void selects_append_order(Selects *selects, RelAttr rel_attrs[], size_t order_num, OrderFlag flag);
+void selects_append_order(Selects *selects, RelAttr rel_attrs[], size_t order_num, OrderFlag flag[]);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
 void selects_append_group_by(Selects *selects, RelAttr rel_attr[], size_t attr_num);
 void selects_append_having(Selects *selects, Condition conditions[], size_t condition_num);

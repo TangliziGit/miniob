@@ -46,14 +46,14 @@ public:
   const std::vector<FunctionField *> &aggregation_fields() const { return aggregation_fields_; }
   const std::vector<FunctionField *> &hidden_aggregation_fields() const { return hidden_aggregation_fields_; }
 
-  OrderFlag order_flag() { return order_flag_; };
+  std::vector<OrderFlag> order_flag() { return order_flag_; };
   std::vector<Field*> order_field() {return order_fields_; };
 private:
   std::vector<AbstractField *> query_fields_;
   std::vector<Table *> tables_;
   FilterStmt *filter_stmt_ = nullptr;
   std::vector<Field *> order_fields_;
-  OrderFlag order_flag_;
+  std::vector<OrderFlag> order_flag_;
   FilterStmt *having_filter_stmt_ = nullptr;
   bool has_aggregation_ = false;
   std::vector<FunctionField *> aggregation_fields_;

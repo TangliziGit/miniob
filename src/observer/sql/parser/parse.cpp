@@ -213,12 +213,13 @@ void selects_append_relation(Selects *selects, const char *relation_name)
 {
   selects->relations[selects->relation_num++] = strdup(relation_name);
 }
-void selects_append_order(Selects *selects, RelAttr rel_attrs[], size_t order_num, OrderFlag flag) {
+void selects_append_order(Selects *selects, RelAttr rel_attrs[], size_t order_num, OrderFlag flag[]) {
   for (size_t i = 0; i < order_num; i++) {
     selects->order_by[i] = rel_attrs[i];
+    selects->order_flag[i] = flag[i];
   }
   selects->order_num = order_num;
-  selects->order_flag = flag;
+  
 }
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num)
 {

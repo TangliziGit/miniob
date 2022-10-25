@@ -23,18 +23,21 @@ struct ORDER_DESC
       return false;
     }
 };
-struct ORDER_ASC
+struct ORDER
 {
-    bool operator () (std::pair<std::vector<TupleCell*>, Tuple*> &a, std::pair<std::vector<TupleCell*>, Tuple*> &b)
+    bool operator () (std::pair<std::vector<std::pair<OrderFlag, TupleCell*>>,Tuple*> &a, std::pair<std::vector<std::pair<OrderFlag, TupleCell*>>,Tuple*> &b)
     {
         for (int i = 0; i < a.first.size(); i++) {
-        if (a.first[i]->is_null()) {
+        if (a.first[i].second->is_null()) {
           return true;
         }
-        if (a.first[i]->compare(*b.first[i]) == 0) {
+        if (a.first[i].second->compare(*b.first[i].second) == 0) {
           continue;
         }
-        return a.first[i]->compare(*b.first[i]) > 0;
+        if (a.first[i].first == ASC_T) {
+          return a.first[i].second->compare(*b.first[i].second) > 0;
+        }
+        return a.first[i].second->compare(*b.first[i].second) < 0;
       }
       return false;
     }
@@ -42,7 +45,7 @@ struct ORDER_ASC
 class OrderByOperator : public Operator
 {
 public:
-  OrderByOperator(std::vector<Field*> fields, OrderFlag flag) : fields_(fields), flag_(flag) {
+  OrderByOperator(std::vector<Field*> fields, std::vector<OrderFlag> flag) : fields_(fields), flag_(flag) {
     
   }
   virtual RC open() {
@@ -61,38 +64,25 @@ public:
         if (RC::SUCCESS != rc) {
           return rc;
         }
-        cells.push_back(cell);
+        cells.push_back({flag_[i], cell});
       }
       
-      if (flag_ == DESC_T) {
-        desc_queue_.push(std::pair<std::vector<TupleCell*>, Tuple*>{cells, tuple});
-      } else {
-        asc_queue_.push(std::pair<std::vector<TupleCell*>, Tuple*>{cells, tuple});
-      }
+      order_queue_.push(std::pair<std::vector<std::pair<OrderFlag, TupleCell*>>, Tuple*>{cells, tuple});
     }
     return RC::SUCCESS;
   }
   virtual RC next() {
-    if ((flag_ == DESC_T && desc_queue_.empty()) || (flag_ == ASC_T && asc_queue_.empty())) {
+    if (order_queue_.empty()) {
       return RC::RECORD_EOF;
     }
-    if (flag_ == DESC_T) {
-      current_tuple_ = this->desc_queue_.top().second;
-      this->desc_queue_.pop();
-    } else {
-      current_tuple_ = this->asc_queue_.top().second;
-      this->asc_queue_.pop();
-    }
-    
+    current_tuple_ = this->order_queue_.top().second;
+    this->order_queue_.pop();
     return RC::SUCCESS;
   }
   virtual RC close() {
     Operator *child = children_[0];
-    while (!asc_queue_.empty()) {
-      asc_queue_.pop();
-    }
-    while (!desc_queue_.empty()) {
-      desc_queue_.pop();
+    while (!order_queue_.empty()) {
+      order_queue_.pop();
     }
     RC rc = child->close();
     return rc;
@@ -108,10 +98,9 @@ public:
 
 
 protected:
-  std::priority_queue<std::pair<std::vector<TupleCell*>,Tuple*>, std::vector<std::pair<std::vector<TupleCell*>,Tuple*>>, ORDER_DESC> desc_queue_;
-  std::priority_queue<std::pair<std::vector<TupleCell*>,Tuple*>, std::vector<std::pair<std::vector<TupleCell*>,Tuple*>>, ORDER_ASC> asc_queue_;
+  std::priority_queue<std::pair<std::vector<std::pair<OrderFlag, TupleCell*>>,Tuple*>, std::vector<std::pair<std::vector<std::pair<OrderFlag, TupleCell*>>,Tuple*>>, ORDER> order_queue_;
   std::vector<Operator *> children_;
   std::vector<Field*> fields_;
   Tuple* current_tuple_;
-  OrderFlag flag_;
+  std::vector<OrderFlag> flag_;
 };
