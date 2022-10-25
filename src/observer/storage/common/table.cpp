@@ -770,10 +770,10 @@ RC Table::update_record(Trx *trx, Record *record, const std::vector<const char *
       *(char *)(record->data() + meta->offset() + meta->len()) = 1;
     }
   }
-  // if(trx != nullptr){
-  //   trx->init_trx_info(this, *record);
-  // }
-    rc = record_handler_->update_record(record);
+  if(trx != nullptr){
+    trx->init_trx_info(this, *record);
+  }
+  rc = record_handler_->update_record(record);
 
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to update record (rid=%d.%d). rc=%d:%s",
@@ -790,6 +790,26 @@ RC Table::update_record(Trx *trx, Record *record, const std::vector<const char *
 
   if(trx != nullptr){
     rc = trx->update_record(this, record, &pre_record);
+    if(rc!=RC::SUCCESS){
+      LOG_ERROR("Failed to add log for update record (rid=%d.%d). rc=%d:%s",
+              record->rid().page_num, record->rid().slot_num, rc, strrc(rc));
+      delete_entry_of_indexes(record->data(), record->rid(), false);
+      insert_entry_of_indexes(pre_record.data(), pre_record.rid());
+      record_handler_->update_record(&pre_record);
+      return rc;
+    }
+
+    // append clog record
+    CLogRecord *clog_record = nullptr;
+    rc = clog_manager_->clog_gen_record(CLogType::REDO_INSERT, trx->get_current_id(), clog_record, name(), table_meta_.record_size(), record);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to create a clog record. rc=%d:%s", rc, strrc(rc));
+      return rc;
+    }
+    rc = clog_manager_->clog_append_record(clog_record);
+    if (rc != RC::SUCCESS) {
+      return rc;
+    }
   }
 
   return rc;

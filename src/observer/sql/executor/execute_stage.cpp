@@ -192,18 +192,9 @@ void ExecuteStage::handle_request(common::StageEvent *event)
     } break;
     case SCF_BEGIN: {
       do_begin(sql_event);
-      /*
-      session_event->set_response("SUCCESS\n");
-      */
     } break;
     case SCF_COMMIT: {
       do_commit(sql_event);
-      /*
-      Trx *trx = session->current_trx();
-      RC rc = trx->commit();
-      session->set_trx_multi_operation_mode(false);
-      session_event->set_response(strrc(rc));
-      */
     } break;
     case SCF_CLOG_SYNC: {
       do_clog_sync(sql_event);
@@ -735,19 +726,18 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event)
   } else {
     session_event->set_response("SUCCESS\n");
     if (!session->is_trx_multi_operation_mode()) {
-      // TODO(chunxu): maybe not necessary to implement now?
-      // CLogRecord *clog_record = nullptr;
-      // rc = clog_manager->clog_gen_record(CLogType::REDO_MTR_COMMIT, trx->get_current_id(), clog_record);
-      // if (rc != RC::SUCCESS || clog_record == nullptr) {
-      //   session_event->set_response("FAILURE\n");
-      //   return rc;
-      // }
+      CLogRecord *clog_record = nullptr;
+      rc = clog_manager->clog_gen_record(CLogType::REDO_MTR_COMMIT, trx->get_current_id(), clog_record);
+      if (rc != RC::SUCCESS || clog_record == nullptr) {
+        session_event->set_response("FAILURE\n");
+        return rc;
+      }
 
-      // rc = clog_manager->clog_append_record(clog_record);
-      // if (rc != RC::SUCCESS) {
-      //   session_event->set_response("FAILURE\n");
-      //   return rc;
-      // }
+      rc = clog_manager->clog_append_record(clog_record);
+      if (rc != RC::SUCCESS) {
+        session_event->set_response("FAILURE\n");
+        return rc;
+      }
 
       trx->next_current_id();
       session_event->set_response("SUCCESS\n");
