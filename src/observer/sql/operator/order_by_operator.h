@@ -7,29 +7,19 @@
 #include "sql/function/register.h"
 #include "sql/operator/operator.h"
 
-struct ORDER_DESC
-{
-    bool operator () (std::pair<std::vector<TupleCell*>, Tuple*> &a, std::pair<std::vector<TupleCell*>, Tuple*> &b)
-    {
-      for (int i = 0; i < a.first.size(); i++) {
-        if (a.first[i]->is_null()) {
-          return true;
-        }
-        if (a.first[i]->compare(*b.first[i]) == 0) {
-          continue;
-        }
-        return a.first[i]->compare(*b.first[i]) < 0;
-      }
-      return false;
-    }
-};
 struct ORDER
 {
     bool operator () (std::pair<std::vector<std::pair<OrderFlag, TupleCell*>>,Tuple*> &a, std::pair<std::vector<std::pair<OrderFlag, TupleCell*>>,Tuple*> &b)
     {
-        for (int i = 0; i < a.first.size(); i++) {
+      for (int i = 0; i < a.first.size(); i++) {
+        if (a.first[i].second->is_null() && b.first[i].second->is_null()) {
+          continue;
+        }
         if (a.first[i].second->is_null()) {
           return true;
+        }
+        if (b.first[i].second->is_null()) {
+          return false;
         }
         if (a.first[i].second->compare(*b.first[i].second) == 0) {
           continue;
