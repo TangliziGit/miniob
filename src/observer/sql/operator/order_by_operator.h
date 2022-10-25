@@ -16,10 +16,10 @@ struct ORDER
           continue;
         }
         if (a.first[i].second->is_null()) {
-          return true;
+          return a.first[i].first == DESC_T;
         }
         if (b.first[i].second->is_null()) {
-          return false;
+          return b.first[i].first == ASC_T;
         }
         if (a.first[i].second->compare(*b.first[i].second) == 0) {
           continue;
