@@ -57,7 +57,7 @@ public:
 
     while ((rc = child->next()) == RC::SUCCESS) {
       Tuple * tuple = new CompositeTuple(static_cast<CompositeTuple &>(*child->current_tuple()));
-      std::vector<TupleCell *> cells;
+     std::vector<std::pair<OrderFlag, TupleCell*>> cells;
       for (int i = 0; i < this->fields_.size(); i++) {
         TupleCell *cell = new TupleCell();
         rc = tuple->find_cell(*fields_[i], *cell);

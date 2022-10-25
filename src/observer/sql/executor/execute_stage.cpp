@@ -472,7 +472,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     } });
 
   Operator *temp_oper = join_opers.back();
-  if (select_stmt->order_flag() != UNDEFINED) {
+  if (select_stmt->order_flag().size()!=0) {
     OrderByOperator *order_oper = new OrderByOperator(select_stmt->order_field(), select_stmt->order_flag());
     order_oper->add_child(temp_oper);
     temp_oper = order_oper;
