@@ -60,6 +60,8 @@ public:
             /* 空表 */
             return rc;
           }
+        }else{
+          return rc;
         }
       }
       tuple_->set_tuple(table_->name(), right_oper_->current_tuple());

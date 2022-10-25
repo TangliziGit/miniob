@@ -295,7 +295,7 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
   // 如果没有就找范围比较的，但是直接排除不等比较的索引查询. (你知道为什么?)
   const FilterUnit *better_filter = nullptr;
   for (const FilterUnit * filter_unit : filter_units) {
-    if (filter_unit->comp() == NOT_EQUAL||filter_unit->comp()==LIKE||filter_unit->comp()==NOT_LIKE||filter_unit->comp()==IS) {
+    if (filter_unit->comp() == NOT_EQUAL||filter_unit->comp()==LIKE||filter_unit->comp()==NOT_LIKE||filter_unit->comp()==IS||filter_unit->comp()==IS_NOT) {
       continue;
     }
 
