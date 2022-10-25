@@ -32,7 +32,7 @@ typedef struct ParserContext {
   CompOp comp;
   size_t order_attr_size;
   RelAttr order_attrs[MAX_NUM];
-  OrderFlag order_flag;
+  OrderFlag order_flag[MAX_NUM];
   size_t id_num;
   char id[MAX_NUM][MAX_NUM];
 } ParserContext;
@@ -445,22 +445,22 @@ order_by:%empty
 	}
 	;
 order:%empty {
-	    CONTEXT->order_flag = ASC_T;
+	    CONTEXT->order_flag[CONTEXT->order_attr_size] = ASC_T;
     }
     | DESC {
-		CONTEXT->order_flag = DESC_T;
+		CONTEXT->order_flag[CONTEXT->order_attr_size] = DESC_T;
 	}
 	| ASC {
-		CONTEXT->order_flag = ASC_T;
+		CONTEXT->order_flag[CONTEXT->order_attr_size] = ASC_T;
 	}
 	;
 order_attr:
-    ID  { 
+    ID  order{ 
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, $1);
 			CONTEXT->order_attrs[CONTEXT->order_attr_size++]=attr;
     }
-    | ID DOT ID {
+    | ID DOT ID order{
 			RelAttr attr;
 			relation_attr_init(&attr, $1, $3);
 			CONTEXT->order_attrs[CONTEXT->order_attr_size++]=attr;
