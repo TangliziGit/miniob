@@ -397,13 +397,14 @@ value:
 		selects_append_having(&CONTEXT->ssql->sstr.selection, CONTEXT->having_conditions, CONTEXT->having_condition_length);
 		selects_append_order(&CONTEXT->ssql->sstr.selection, CONTEXT->order_attrs, CONTEXT->order_attr_size, CONTEXT->order_flag);
 		Selects*selects = &CONTEXT->ssql->sstr.selection;
+		Query * query = CONTEXT->ssql;
 		//临时变量清零
 		CONTEXT->condition_length=0;
 		CONTEXT->value_length = 0;
-		query_reset(CONTEXT->ssql);
 		parser_id--;
 		value_init_select(&CONTEXT->values[CONTEXT->value_length++],selects);
 		$$=&CONTEXT->values[CONTEXT->value_length-1];
+		query_reset(query);
 	}
     ;
     
