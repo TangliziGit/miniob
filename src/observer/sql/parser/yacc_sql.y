@@ -57,7 +57,7 @@ ParserContext *get_context(yyscan_t scanner)
 
 void yyerror(yyscan_t scanner, const char *str)
 {
-  for(int i=0;i<=parser_id;i++){
+  while(parser_id>=0){
 	  ParserContext *context = CONTEXT;
       query_reset(context->ssql);
       context->ssql->flag = SCF_ERROR;
@@ -66,6 +66,7 @@ void yyerror(yyscan_t scanner, const char *str)
       memset(context->insert_value_length,0,sizeof(context->insert_value_length));
       context->insert_num=0;
       context->id_num=0;
+	  parser_id--;
   }
   parser_id=0;
   printf("parse sql failed. error=%s", str);
@@ -135,6 +136,8 @@ void yyerror(yyscan_t scanner, const char *str)
 		BY
 		NULL_T
         NULLABLE
+		EXISTS_T
+		IN_T
 %union {
   struct _Attr *attr;
   struct _Condition *condition1;
@@ -396,15 +399,14 @@ value:
 		selects_append_group_by(&CONTEXT->ssql->sstr.selection, CONTEXT->group_by_attrs, CONTEXT->group_by_attr_length);
 		selects_append_having(&CONTEXT->ssql->sstr.selection, CONTEXT->having_conditions, CONTEXT->having_condition_length);
 		selects_append_order(&CONTEXT->ssql->sstr.selection, CONTEXT->order_attrs, CONTEXT->order_attr_size, CONTEXT->order_flag);
-		Selects*selects = &CONTEXT->ssql->sstr.selection;
+		CONTEXT->ssql->flag=SCF_SELECT;//"select";
 		Query * query = CONTEXT->ssql;
 		//临时变量清零
 		CONTEXT->condition_length=0;
 		CONTEXT->value_length = 0;
 		parser_id--;
-		value_init_select(&CONTEXT->values[CONTEXT->value_length++],selects);
+		value_init_select(&CONTEXT->values[CONTEXT->value_length++],query);
 		$$=&CONTEXT->values[CONTEXT->value_length-1];
-		query_reset(query);
 	}
     ;
     
@@ -689,7 +691,23 @@ condition_list: %empty
 			}
     ;
 condition:
-    ID comOp value 
+	EXISTS_T value{
+		CONTEXT->comp = EXISTS;
+
+		Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+		Condition condition;
+		condition_init(&condition, CONTEXT->comp, 0, NULL, NULL, 0, NULL, right_value);
+		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+	}
+	| NOT EXISTS_T value{
+		CONTEXT->comp = NOT_EXISTS;
+		Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+		Condition condition;
+		condition_init(&condition, CONTEXT->comp, 0, NULL, NULL, 0, NULL, right_value);
+		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+	}
+    | ID comOp value 
 		{
 			RelAttr left_attr;
 			relation_attr_init(&left_attr, NULL, $1);
@@ -780,6 +798,8 @@ comOp:
 	| NOT LIKE_T {CONTEXT->comp = NOT_LIKE;}
 	| IS_T {CONTEXT->comp = IS;}
 	| IS_T NOT{CONTEXT->comp = IS_NOT;}
+	| IN_T {CONTEXT->comp = IN;}
+	| NOT IN_T {CONTEXT->comp = NOT_IN;}
     ;
 
 load_data:

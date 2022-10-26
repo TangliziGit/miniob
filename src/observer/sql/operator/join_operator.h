@@ -42,7 +42,7 @@ public:
   }
   RC next() override{
     RC rc = RC::SUCCESS;
-    while (1) {
+    while (true) {
       rc = right_oper_->next();
       if (rc != RC::SUCCESS) {
         if (rc != RC::RECORD_EOF) {
@@ -68,10 +68,13 @@ public:
         }
       }
       tuple_->set_tuple(table_->name(), right_oper_->current_tuple());
-      if(do_predicate(*tuple_)){
-        return rc;
+      auto res = do_predicate(*tuple_);
+      if (res.first==RC::SUCCESS&&!res.second) {
+        continue;
       }
+      return res.first;
     }
+    return rc;
   }
   RC close() override{
     right_oper_->close();

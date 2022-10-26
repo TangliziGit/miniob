@@ -133,7 +133,20 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       left = new FieldExpr(table, field);
     }
   } else {
-    left = new ValueExpr(condition.left_value);
+    if(condition.left_value.is_query){
+      Query *query = (Query*)condition.left_value.data;
+      Stmt *select_stmt = nullptr;
+      if((rc = SelectStmt::create_stmt(db, *query, select_stmt))!= RC::SUCCESS){
+        return rc;
+      }
+      size_t query_num = ((SelectStmt *)select_stmt)->query_fields().size();
+      if(query_num>1 && (comp!=CompOp::EXISTS&&comp!=CompOp::NOT_EXISTS)){
+        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      }
+      left = new SubSelectExpr(select_stmt);
+    } else {
+      left = new ValueExpr(condition.left_value);
+    }
   }
 
   if (condition.right_is_attr) {
@@ -156,7 +169,20 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       right = new FieldExpr(table, field);
     }
   } else {
-    right = new ValueExpr(condition.right_value);
+    if (condition.right_value.is_query) {
+      Query *query = (Query*)condition.right_value.data;
+      Stmt *select_stmt = nullptr;
+      if ((rc = SelectStmt::create_stmt(db, *query, select_stmt)) != RC::SUCCESS) {
+        return rc;
+      }
+      size_t query_num = ((SelectStmt *)select_stmt)->query_fields().size();
+      if(query_num>1 && (comp!=CompOp::EXISTS&&comp!=CompOp::NOT_EXISTS)){
+        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      }
+      right = new SubSelectExpr(select_stmt);
+    } else {
+      right = new ValueExpr(condition.right_value);
+    }
   }
 
   filter_unit = new FilterUnit;

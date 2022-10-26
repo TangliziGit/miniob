@@ -85,7 +85,9 @@ void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const
 
 void relation_attr_destroy(RelAttr *relation_attr)
 {
-  free(relation_attr->relation_name);
+  if(relation_attr->relation_name!=nullptr){
+    free(relation_attr->relation_name);
+  }
   free(relation_attr->attribute_name);
   function_destroy(relation_attr->function);
   free(relation_attr->function);
@@ -129,11 +131,9 @@ int value_init_date(Value* value, const char* v) {
     return 1;
 }
 
-int value_init_select(Value* value, Selects *select) {
-  value->type = SUB_SELECT;
-  value->data = malloc(sizeof(Selects));
-  memcpy(value->data, select, sizeof(Selects));
-  return 1;
+void value_init_select(Value* value, Query *sub_query) {
+  value->is_query = 1;
+  value->data = sub_query;
 }
 
 void value_init_null(Value* value) {
@@ -143,9 +143,13 @@ void value_init_null(Value* value) {
 void value_destroy(Value *value)
 {
   value->type = UNDEFINED;
-  if(value->type != NULLS){
-    free(value->data);
+  if(value->data!=nullptr){
+    if(value->is_query){
+      query_destroy((Query *)value->data);
+    } else
+      free(value->data);
   }
+  value->is_query = 0;
   value->data = nullptr;
 }
 
@@ -153,11 +157,13 @@ void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr
     int right_is_attr, RelAttr *right_attr, Value *right_value)
 {
   condition->comp = comp;
-  condition->left_is_attr = left_is_attr;
-  if (left_is_attr) {
-    condition->left_attr = *left_attr;
-  } else {
-    condition->left_value = *left_value;
+  if (comp != CompOp::EXISTS && comp != CompOp::NOT_EXISTS) {
+    condition->left_is_attr = left_is_attr;
+    if (left_is_attr) {
+      condition->left_attr = *left_attr;
+    } else {
+      condition->left_value = *left_value;
+    }
   }
 
   condition->right_is_attr = right_is_attr;

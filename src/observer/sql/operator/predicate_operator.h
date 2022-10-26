@@ -39,7 +39,7 @@ public:
   //int tuple_cell_num() const override;
   //RC tuple_cell_spec_at(int index, TupleCellSpec &spec) const override;
 
-  bool do_predicate(Tuple &tuple);
+  std::pair<RC,bool> do_predicate(Tuple &tuple);
 private:
   FilterStmt *filter_stmt_ = nullptr;
 };

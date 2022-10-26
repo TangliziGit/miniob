@@ -34,10 +34,11 @@ public:
 
   ~TupleCellSpec()
   {
-    if (expression_) {
-      delete expression_;
-      expression_ = nullptr;
-    }
+    /* todo :mem leak */
+    // if (expression_) {
+    //   delete expression_;
+    //   expression_ = nullptr;
+    // }
   }
 
   void set_alias(const char *alias)
@@ -70,13 +71,17 @@ public:
   virtual RC  find_cell(const Field &field, TupleCell &cell) const = 0;
   virtual RC  find_cell_by_alias(const char *alias, TupleCell &cell) const = 0;
   virtual RC  cell_spec_at(int index, const TupleCellSpec *&spec) const = 0;
-  virtual RC init(const std::map<std::string, int> &name_map){
+  virtual Tuple* copy() const = 0;
+  virtual void destroy() = 0;
+  virtual RC init(const std::map<std::string, int> &name_map)
+  {
     return RC::UNIMPLENMENT;
   };
 
   virtual RC set_tuple(const char *table_name, Tuple *tuple){
     return RC::UNIMPLENMENT;
   };
+
 
   // extract_cells just for function arguments extracting
   std::pair<Function::Arguments, RC> extract_cells(const std::vector<AbstractField *>& fields) const {
@@ -116,12 +121,27 @@ public:
   }
   virtual ~RowTuple()
   {
-    for (TupleCellSpec *spec : speces_) {
-      delete spec;
-    }
+    // for (TupleCellSpec *spec : speces_) {
+    //   delete spec;
+    // }
     speces_.clear();
   }
-  
+  Tuple* copy()const override{
+    RowTuple *row_tuple = new RowTuple();
+    row_tuple->table_ = table_;
+    /* todo(yin):mem leak */
+    row_tuple->record_ = new Record(*record_);
+    for (size_t i = 0; i < speces_.size(); i++) {
+      row_tuple->speces_.push_back(speces_[i]);
+    }
+    return row_tuple;
+  }
+
+  void destroy() override{
+    delete record_;
+    record_ = nullptr;
+    table_ = nullptr;
+  }
   void set_record(Record *record)
   {
     this->record_ = record;
@@ -218,10 +238,30 @@ public:
   ProjectTuple() = default;
   virtual ~ProjectTuple()
   {
-    for (TupleCellSpec *spec : speces_) {
-      delete spec;
-    }
+    // for (TupleCellSpec *spec : speces_) {
+    //   delete spec;
+    // }
     speces_.clear();
+  }
+
+  Tuple* copy()const override{
+    /* 不复制speces,没用 */
+    ProjectTuple *proj_tuple = new ProjectTuple();
+    if(tuple_!=nullptr){
+      proj_tuple->tuple_ = tuple_->copy();
+    }
+    for(TupleCellSpec*spec:speces_){
+      proj_tuple->speces_.push_back(spec);
+    }
+    return proj_tuple;
+  }
+
+  void destroy() override{
+    if(tuple_!=nullptr){
+      tuple_->destroy();
+      delete tuple_;
+    }
+    tuple_ = nullptr;
   }
 
   void set_tuple(Tuple *tuple)
@@ -297,6 +337,23 @@ public:
       this->tuples_.push_back(new RowTuple(static_cast<RowTuple&>(*composite_tuple.tuples_[i])));
     }
     this->name_map_ = composite_tuple.name_map_;
+  }
+
+  void destroy() override{
+    for(auto tuple:tuples_){
+      tuple->destroy();
+      delete tuple;
+    }
+    tuples_.clear();
+  }
+
+  Tuple* copy()const override {
+    CompositeTuple *composite_tuple = new CompositeTuple();
+    for(auto tuple:tuples_){
+      composite_tuple->tuples_.push_back(tuple->copy());
+    }
+    composite_tuple->name_map_ = name_map_;
+    return composite_tuple;
   }
 
   RC init(const std::map<std::string,int> &name_map)override {

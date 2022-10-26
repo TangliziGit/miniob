@@ -40,9 +40,11 @@ RC PredicateOperator::next()
       LOG_WARN("failed to get tuple from operator");
       break;
     }
-
-    if (do_predicate(static_cast<RowTuple &>(*tuple))) {
-      return rc;
+    auto res = do_predicate(static_cast<RowTuple &>(*tuple));
+    if(res.first== RC::SUCCESS && !res.second){
+      continue;
+    }else{
+      return res.first;
     }
   }
   return rc;
@@ -59,34 +61,50 @@ Tuple * PredicateOperator::current_tuple()
   return children_[0]->current_tuple();
 }
 
-bool PredicateOperator::do_predicate(Tuple &tuple)
+std::pair<RC,bool> PredicateOperator::do_predicate(Tuple &tuple)
 {
   if (filter_stmt_ == nullptr || filter_stmt_->filter_units().empty()) {
-    return true;
+    return {RC::SUCCESS,true};
   }
-
+  RC rc = RC::SUCCESS;
   for (const FilterUnit *filter_unit : filter_stmt_->filter_units()) {
     Expression *left_expr = filter_unit->left();
     Expression *right_expr = filter_unit->right();
     CompOp comp = filter_unit->comp();
+    if (comp == EXISTS) {
+      return {rc, right_expr->exist()};
+    }
+    if(comp == NOT_EXISTS){
+      return {rc, !right_expr->exist()};
+    }
     TupleCell left_cell;
     TupleCell right_cell;
-    left_expr->get_value(tuple, left_cell);
-    right_expr->get_value(tuple, right_cell);
+    if((rc = left_expr->get_value(tuple, left_cell))!= RC::SUCCESS){
+      return {rc, false};
+    }
+    if(comp == IN){
+      return {rc, !left_cell.is_null() && right_expr->in(left_cell)};
+    }
+    if(comp == NOT_IN){
+      return {rc, !left_cell.is_null() && !right_expr->in(left_cell)};
+    }
+    if((rc = right_expr->get_value(tuple, right_cell))!= RC::SUCCESS){
+      return {rc, false};
+    }
     if(left_cell.attr_type()==NULLS||right_cell.attr_type()==NULLS){
       /* 如果是null,除is的任何比较都是false */
       if( comp==IS ){
-        return left_cell.is(right_cell);
+        return {rc,left_cell.is(right_cell)};
       }
       if(comp == IS_NOT){
-        return !left_cell.is(right_cell);
+        return {rc,!left_cell.is(right_cell)};
       }
-      return false;
+      return {rc, false};
     }
     if(comp == LIKE||comp == NOT_LIKE){
       bool is_like = left_cell.like(right_cell);
       if((comp == LIKE && !is_like)||(comp==NOT_LIKE&&is_like)){
-        return false;
+        return {rc, false};
       }
       continue;
     }
@@ -94,7 +112,7 @@ bool PredicateOperator::do_predicate(Tuple &tuple)
     bool filter_result = false;
     switch (comp) {
     case EQUAL_TO: {
-      filter_result = (0 == compare); 
+      filter_result = (0 == compare);
     } break;
     case LESS_EQUAL: {
       filter_result = (compare <= 0); 
@@ -116,8 +134,8 @@ bool PredicateOperator::do_predicate(Tuple &tuple)
     } break;
     }
     if (!filter_result) {
-      return false;
+      return {rc, false};
     }
   }
-  return true;
+  return {rc, true};
 }

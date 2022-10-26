@@ -19,6 +19,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/common/field.h"
 #include "sql/expr/tuple_cell.h"
 #include "sql/function/function.h"
+#include "sql/stmt/select_stmt.h"
 
 class Tuple;
 
@@ -28,6 +29,7 @@ enum class ExprType {
   VALUE,
   FUNCTION,
   ALIAS,
+  SUB_SELECT,
 };
 
 class Expression
@@ -36,8 +38,17 @@ public:
   Expression() = default;
   virtual ~Expression() = default;
   
-  virtual RC get_value(const Tuple &tuple, TupleCell &cell) const = 0;
+  virtual RC get_value(const Tuple &tuple, TupleCell &cell)= 0;
   virtual ExprType type() const = 0;
+  virtual bool exist(){
+    return true;
+  }
+  virtual bool in(const TupleCell&cell){
+    return false;
+  }
+  virtual RC init(std::function<std::pair<std::vector<Tuple*>,RC>(Stmt *)> init_func){
+    return RC::UNIMPLENMENT;
+  }
 };
 
 class FieldExpr : public Expression
@@ -74,7 +85,7 @@ public:
     return field_.field_name();
   }
 
-  RC get_value(const Tuple &tuple, TupleCell &cell) const override;
+  RC get_value(const Tuple &tuple, TupleCell &cell)override;
 private:
   Field field_;
 };
@@ -93,7 +104,7 @@ public:
 
   virtual ~ValueExpr() = default;
 
-  RC get_value(const Tuple &tuple, TupleCell & cell) const override;
+  RC get_value(const Tuple &tuple, TupleCell & cell) override;
   AttrType value_type(){
     return tuple_cell_.attr_type();
   }
@@ -110,6 +121,53 @@ private:
   TupleCell tuple_cell_;
 };
 
+
+class SubSelectExpr : public Expression
+{
+public:
+  SubSelectExpr() = default;
+  explicit SubSelectExpr(Stmt *select_stmt) : select_stmt_(select_stmt) {}
+
+  virtual ~SubSelectExpr() = default;
+  // {
+    // delete select_stmt_;
+    // for (auto tuple : tuples_) {
+    //   delete tuple;
+    // }
+    // tuples_.clear();
+  // }
+  RC init(std::function<std::pair<std::vector<Tuple*>,RC>(Stmt *)> init_func) override{
+    init_func_ = init_func;
+    return RC::SUCCESS;
+  }
+  
+  RC init_if_not(){
+    /* lazy */
+    if(select_stmt_!=nullptr){
+      auto res = init_func_(select_stmt_);
+      tuples_.swap(res.first);
+      delete select_stmt_;
+      select_stmt_ = nullptr;
+      return res.second;
+    }
+    return RC::SUCCESS;
+  }
+  RC get_value(const Tuple &tuple, TupleCell &cell) override;
+
+  bool exist() override;
+
+  bool in(const TupleCell &cell) override;
+
+  ExprType type() const override
+  {
+    return ExprType::SUB_SELECT;
+  }
+private:
+  std::function<std::pair<std::vector<Tuple*>, RC>(Stmt *)> init_func_;
+  Stmt *select_stmt_;
+  std::vector<Tuple*> tuples_;
+};
+
 class FunctionExpr : public Expression {
 public:
   explicit FunctionExpr(std::vector<AbstractField *> fields, Function *function)
@@ -117,7 +175,7 @@ public:
   ~FunctionExpr() override = default;
 
   ExprType type() const override { return ExprType::FUNCTION; }
-  RC get_value(const Tuple &tuple, TupleCell &cell) const override;
+  RC get_value(const Tuple &tuple, TupleCell &cell) override;
 
 private:
   std::vector<AbstractField *> fields_;
@@ -135,7 +193,7 @@ public:
   ~AliasExpr() override = default;
 
   ExprType type() const override { return ExprType::ALIAS; }
-  RC get_value(const Tuple &tuple, TupleCell &cell) const override;
+  RC get_value(const Tuple &tuple, TupleCell &cell) override;
 private:
   const char *alias_;
 };

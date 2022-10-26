@@ -286,7 +286,8 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
   // 如果没有就找范围比较的，但是直接排除不等比较的索引查询. (你知道为什么?)
   const FilterUnit *better_filter = nullptr;
   for (const FilterUnit * filter_unit : filter_units) {
-    if (filter_unit->comp() == NOT_EQUAL||filter_unit->comp()==LIKE||filter_unit->comp()==NOT_LIKE||filter_unit->comp()==IS||filter_unit->comp()==IS_NOT) {
+    if (filter_unit->comp() == NOT_EQUAL||filter_unit->comp()==LIKE||filter_unit->comp()==NOT_LIKE||filter_unit->comp()==IS||filter_unit->comp()==IS_NOT
+    || filter_unit->comp() == IN||filter_unit->comp() == NOT_IN||filter_unit->comp()==EXISTS||filter_unit->comp()==NOT_EXISTS) {
       continue;
     }
 
@@ -431,11 +432,32 @@ static void find_filter(FilterStmt* filter_stmt,const std::map<std::string,int>&
   }
 }
 
-RC ExecuteStage::do_select(SQLStageEvent *sql_event)
+std::pair<std::vector<Tuple *>, RC> do_select(Stmt *stmt);
+RC init_subselect_if_have(FilterStmt *filter_stmt)
 {
-  SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
-  SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
+  for (auto filter_unit : filter_stmt->filter_units()) {
+    Expression *left = filter_unit->left();
+    if(left->type() == ExprType::SUB_SELECT &&((rc = left->init(do_select))!= RC::SUCCESS)){
+      return rc;
+    }
+    Expression *right = filter_unit->right();
+    if(right->type() == ExprType::SUB_SELECT &&((rc = right->init(do_select))!= RC::SUCCESS)){
+      return rc;
+    }
+  }
+  return rc;
+}
+
+std::pair<std::vector<Tuple*>, RC> do_select(Stmt *stmt){
+  SelectStmt *select_stmt = (SelectStmt *)(stmt);
+  /* 为子查询设置好do_select执行函数,目前为lazy方案 */
+  RC rc = RC::SUCCESS;
+  std::vector<Tuple*> tuples;
+  rc = init_subselect_if_have(select_stmt->filter_stmt());
+  if(rc != RC::SUCCESS){
+    return {tuples, rc};
+  }
 
   auto tables = select_stmt->tables();
   std::map<std::string, int> name_idx;
@@ -462,11 +484,93 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     } });
 
   Operator *temp_oper = join_opers.back();
-  if (select_stmt->order_flag().size()!=0) {
-    OrderByOperator *order_oper = new OrderByOperator(select_stmt->order_field(), select_stmt->order_flag());
-    order_oper->add_child(temp_oper);
-    temp_oper = order_oper;
+  PredicateOperator pred_oper(select_stmt->filter_stmt());
+  pred_oper.add_child(temp_oper);
+
+  Operator *oper = nullptr;
+  if (select_stmt->has_aggregation()) {
+    // TODO(chunxu): add group by and having fields
+    oper = new AggregationOperator(
+        select_stmt->query_fields(),
+        select_stmt->aggregation_fields(),
+        select_stmt->hidden_aggregation_fields(),
+        select_stmt->group_by_fields(),
+        select_stmt->having_filter_stmt()
+    );
+  } else {
+    auto project_oper = new ProjectOperator();
+    for (const auto *field : select_stmt->query_fields()) {
+      project_oper->add_projection(field);
+    }
+    oper = project_oper;
   }
+  oper->add_child(&pred_oper);
+
+  rc = oper->open();
+  if (rc != RC::SUCCESS && rc!=RC::RECORD_EOF) {
+    LOG_WARN("failed to open operator");
+    return {tuples, rc};
+  }
+
+  while (rc != RC::RECORD_EOF&&(rc = oper->next()) == RC::SUCCESS) {
+    // get current record
+    // write to response
+    Tuple * tuple = oper->current_tuple();
+    if (nullptr == tuple) {
+      rc = RC::INTERNAL;
+      LOG_WARN("failed to get current record. rc=%s", strrc(rc));
+      break;
+    }
+
+    tuples.push_back(tuple->copy());
+  }
+
+  if (rc != RC::RECORD_EOF) {
+    oper->close();
+  } else {
+    rc = oper->close();
+  }
+  return {tuples,rc};
+};
+
+RC ExecuteStage::do_select(SQLStageEvent *sql_event)
+{
+  SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
+  SessionEvent *session_event = sql_event->session_event();
+  
+  /* 为子查询设置好do_select执行函数,目前为lazy方案 */
+  RC rc = RC::SUCCESS;
+  rc = init_subselect_if_have(select_stmt->filter_stmt());
+  if (rc != RC::SUCCESS) {
+    session_event->set_response("FAILURE\n");
+    return rc;
+  }
+
+  auto tables = select_stmt->tables();
+  std::map<std::string, int> name_idx;
+  auto filter = select_stmt->filter_stmt();
+  std::vector<JoinOperator*> join_opers;
+  for (size_t i = 0; i < tables.size(); i++) {
+    Table *table = tables[i];
+    name_idx[tables[i]->name()] = i;
+    FilterStmt *cur_filter = new FilterStmt();
+    find_filter(filter, name_idx, cur_filter);
+    Operator *oper = try_to_create_index_scan_operator(cur_filter);
+    if(oper == nullptr){
+      oper = new TableScanOperator(table);
+    }
+    join_opers.push_back(new JoinOperator(table, oper, cur_filter));
+    if (i != 0) {
+      join_opers[i]->add_child(join_opers[i - 1]);
+    }
+  }
+  join_opers[0]->init(name_idx);
+
+  DEFER([&]() { for (auto join_oper:join_opers){
+      delete join_oper;
+    } });
+
+  Operator *temp_oper = join_opers.back();
   PredicateOperator pred_oper(select_stmt->filter_stmt());
   pred_oper.add_child(temp_oper);
 
@@ -515,10 +619,11 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   if (rc != RC::RECORD_EOF) {
     LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
     oper->close();
+    session_event->set_response("FAILURE\n");
   } else {
     rc = oper->close();
+    session_event->set_response(ss.str());
   }
-  session_event->set_response(ss.str());
   return rc;
 }
 
@@ -710,13 +815,22 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event)
   }
 
   UpdateStmt *update_stmt = (UpdateStmt *)stmt;
+  
+  RC rc = RC::SUCCESS;
+  std::vector<Tuple*> tuples;
+  rc = init_subselect_if_have(update_stmt->filter());
+  if(rc != RC::SUCCESS){
+    session_event->set_response("FAILURE\n");
+    return rc;
+  }
+
   TableScanOperator scan_oper(update_stmt->table());
   PredicateOperator pred_oper(update_stmt->filter());
   pred_oper.add_child(&scan_oper);
   UpdateOperator update_oper{update_stmt, trx};
   update_oper.add_child(&pred_oper);
 
-  RC rc = update_oper.open();
+  rc = update_oper.open();
   if (rc != RC::SUCCESS) {
     if(trx!=nullptr){
       trx->rollback();
@@ -760,13 +874,22 @@ RC ExecuteStage::do_delete(SQLStageEvent *sql_event)
   }
 
   DeleteStmt *delete_stmt = (DeleteStmt *)stmt;
+  
+  RC rc = RC::SUCCESS;
+  std::vector<Tuple*> tuples;
+  rc = init_subselect_if_have(delete_stmt->filter_stmt());
+  if(rc != RC::SUCCESS){
+      session_event->set_response("FAILURE\n");
+      return rc;
+  }
+
   TableScanOperator scan_oper(delete_stmt->table());
   PredicateOperator pred_oper(delete_stmt->filter_stmt());
   pred_oper.add_child(&scan_oper);
   DeleteOperator delete_oper(delete_stmt, trx);
   delete_oper.add_child(&pred_oper);
 
-  RC rc = delete_oper.open();
+  rc = delete_oper.open();
   if (rc != RC::SUCCESS) {
     session_event->set_response("FAILURE\n");
   } else {

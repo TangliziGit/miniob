@@ -42,6 +42,8 @@ QUOTE            [\'\"]
 [Nn][Oo][Tt]                                         RETURN_TOKEN(NOT);
 [Ll][Ii][Kk][Ee]                                     RETURN_TOKEN(LIKE_T);
 [Oo][Rr][Dd][Ee][Rr]                                 RETURN_TOKEN(ORDER);
+[Ii][Nn]                                             RETURN_TOKEN(IN_T);
+[Ee][Xx][Ii][Ss][Tt][Ss]                             RETURN_TOKEN(EXISTS_T);
 [Bb][Yy]                                             RETURN_TOKEN(BY);
 [Aa][Ss][Cc]                                         RETURN_TOKEN(ASC);
 ";"                                                  RETURN_TOKEN(SEMICOLON);

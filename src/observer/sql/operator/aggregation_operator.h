@@ -136,7 +136,11 @@ public:
       tuple_ = make_tuple(key, states);
 
       // if having clause not passed then continue next
-      if (predicate_oper_.do_predicate(*tuple_)) {
+      auto res = predicate_oper_.do_predicate(*tuple_);
+      if(res.first!= RC::SUCCESS){
+        return res.first;
+      }
+      if (res.second) {
         iter++;
         tuple_->resize_cell_spec(select_fields_.size());
         return SUCCESS;
