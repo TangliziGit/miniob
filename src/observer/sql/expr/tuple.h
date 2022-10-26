@@ -293,7 +293,7 @@ public:
   CompositeTuple() = default;
   virtual ~CompositeTuple(){}
   CompositeTuple(CompositeTuple &composite_tuple) {
-    for (int i = 0; i < composite_tuple.tuples_.size(); i++) {
+    for (size_t i = 0; i < composite_tuple.tuples_.size(); i++) {
       this->tuples_.push_back(new RowTuple(static_cast<RowTuple&>(*composite_tuple.tuples_[i])));
     }
     this->name_map_ = composite_tuple.name_map_;
@@ -302,6 +302,7 @@ public:
   RC init(const std::map<std::string,int> &name_map)override {
     this->tuples_.resize(name_map.size());
     this->name_map_ = name_map;
+    return RC::SUCCESS;
   }
 
   RC set_tuple(const char *table_name,Tuple * tuple)override
@@ -311,6 +312,7 @@ public:
       return RC::SCHEMA_TABLE_EXIST;
     int idx = itr->second;
     this->tuples_[idx] = tuple;
+    return RC::SUCCESS;
   }
 
   int cell_num() const override{

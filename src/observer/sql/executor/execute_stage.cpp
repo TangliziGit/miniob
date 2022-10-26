@@ -409,7 +409,6 @@ static void find_filter(FilterStmt* filter_stmt,const std::map<std::string,int>&
   if (filter_units.empty() ) {
     return;
   }
-  FilterUnit *better_filter = nullptr;
   std::vector<FilterUnit *> remove_unit;
   for (auto filter_unit : filter_units) {
     Expression *left = filter_unit->left();

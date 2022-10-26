@@ -35,7 +35,7 @@ public:
 
   Tuple * current_tuple() override;
   OperType type()override{
-    OperType::TABLE_SCAN;
+    return OperType::TABLE_SCAN;
   }
 
   // int tuple_cell_num() const override

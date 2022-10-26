@@ -10,11 +10,10 @@
 #include<stdlib.h>
 #include<string.h>
 
+static int parser_id;
 typedef struct ParserContext {
   Query * ssql;
-  size_t select_length;
   size_t condition_length;
-  size_t from_length;
   size_t value_length;
   Value values[MAX_NUM];
   size_t function_length;
@@ -49,27 +48,29 @@ char *substr(const char *s,int n1,int n2)/*从s中提取下标为n1~n2的字符�
   return sp;
 }
 
-void yyerror(yyscan_t scanner, const char *str)
-{
-  ParserContext *context = (ParserContext *)(yyget_extra(scanner));
-  query_reset(context->ssql);
-  context->ssql->flag = SCF_ERROR;
-  context->condition_length = 0;
-  context->from_length = 0;
-  context->select_length = 0;
-  context->value_length = 0;
-  memset(context->insert_value_length,0,sizeof(context->insert_value_length));
-  context->insert_num=0;
-  context->id_num=0;
-  printf("parse sql failed. error=%s", str);
-}
-
 ParserContext *get_context(yyscan_t scanner)
 {
-  return (ParserContext *)yyget_extra(scanner);
+  return &(((ParserContext *)yyget_extra(scanner))[parser_id]);
 }
 
 #define CONTEXT get_context(scanner)
+
+void yyerror(yyscan_t scanner, const char *str)
+{
+  for(int i=0;i<=parser_id;i++){
+	  ParserContext *context = CONTEXT;
+      query_reset(context->ssql);
+      context->ssql->flag = SCF_ERROR;
+      context->condition_length = 0;
+      context->value_length = 0;
+      memset(context->insert_value_length,0,sizeof(context->insert_value_length));
+      context->insert_num=0;
+      context->id_num=0;
+  }
+  parser_id=0;
+  printf("parse sql failed. error=%s", str);
+}
+
 
 %}
 
@@ -359,6 +360,11 @@ insert_value:
 	CONTEXT->insert_values[CONTEXT->insert_num][CONTEXT->insert_value_length[CONTEXT->insert_num]++]=*$1;
    };
 
+get_select:
+   SELECT{
+	parser_id++;
+	CONTEXT->ssql=query_create();
+};
 value:
     NUMBER{
   		value_init_integer(&CONTEXT->values[CONTEXT->value_length++], $1);
@@ -382,6 +388,21 @@ value:
 	}
 	|NULL_T{
   		value_init_null(&CONTEXT->values[CONTEXT->value_length++]);
+		$$=&CONTEXT->values[CONTEXT->value_length-1];
+	}
+	|LBRACE get_select select_attr FROM rel_id rel_list join_attr_list where group_by having order_by RBRACE{
+
+		selects_append_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
+		selects_append_group_by(&CONTEXT->ssql->sstr.selection, CONTEXT->group_by_attrs, CONTEXT->group_by_attr_length);
+		selects_append_having(&CONTEXT->ssql->sstr.selection, CONTEXT->having_conditions, CONTEXT->having_condition_length);
+		selects_append_order(&CONTEXT->ssql->sstr.selection, CONTEXT->order_attrs, CONTEXT->order_attr_size, CONTEXT->order_flag);
+		Selects*selects = &CONTEXT->ssql->sstr.selection;
+		//临时变量清零
+		CONTEXT->condition_length=0;
+		CONTEXT->value_length = 0;
+		query_reset(CONTEXT->ssql);
+		parser_id--;
+		value_init_select(&CONTEXT->values[CONTEXT->value_length++],selects);
 		$$=&CONTEXT->values[CONTEXT->value_length-1];
 	}
     ;
@@ -424,12 +445,9 @@ select:				/*  select 语句的语法解析树*/
 
 		//临时变量清零
 		CONTEXT->condition_length=0;
-		CONTEXT->from_length=0;
-		CONTEXT->select_length=0;
 		CONTEXT->value_length = 0;
 	}
 	;
-
 join_attr:
       INNER JOIN ID ON condition condition_list{
 	selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
@@ -783,12 +801,13 @@ show_index:
 extern void scan_string(const char *str, yyscan_t scanner);
 
 int sql_parse(const char *s, Query *sqls){
-	ParserContext context;
+	ParserContext context[MAX_NUM];
 	memset(&context, 0, sizeof(context));
+	parser_id = 0;
 
 	yyscan_t scanner;
 	yylex_init_extra(&context, &scanner);
-	context.ssql = sqls;
+	context[parser_id].ssql = sqls;
 	scan_string(s, scanner);
 	int result = yyparse(scanner);
 	yylex_destroy(scanner);

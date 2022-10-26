@@ -129,6 +129,13 @@ int value_init_date(Value* value, const char* v) {
     return 1;
 }
 
+int value_init_select(Value* value, Selects *select) {
+  value->type = SUB_SELECT;
+  value->data = malloc(sizeof(Selects));
+  memcpy(value->data, select, sizeof(Selects));
+  return 1;
+}
+
 void value_init_null(Value* value) {
   value->type = NULLS;
 }
@@ -402,7 +409,7 @@ void create_index_destroy(CreateIndex *create_index)
 {
   free(create_index->index_name);
   free(create_index->relation_name);
-  for (auto i = 0; i < create_index->attribute_count;i++){
+  for (int i = 0; i < create_index->attribute_count;i++){
      free(create_index->attribute_name[i]);
   }
 

@@ -11,7 +11,7 @@ struct ORDER
 {
     bool operator () (std::pair<std::vector<std::pair<OrderFlag, TupleCell*>>,Tuple*> &a, std::pair<std::vector<std::pair<OrderFlag, TupleCell*>>,Tuple*> &b)
     {
-      for (int i = 0; i < a.first.size(); i++) {
+      for (size_t i = 0; i < a.first.size(); i++) {
         if (a.first[i].second->is_null() && b.first[i].second->is_null()) {
           continue;
         }
@@ -48,7 +48,7 @@ public:
     while ((rc = child->next()) == RC::SUCCESS) {
       Tuple * tuple = new CompositeTuple(static_cast<CompositeTuple &>(*child->current_tuple()));
      std::vector<std::pair<OrderFlag, TupleCell*>> cells;
-      for (int i = 0; i < this->fields_.size(); i++) {
+      for (size_t i = 0; i < this->fields_.size(); i++) {
         TupleCell *cell = new TupleCell();
         rc = tuple->find_cell(*fields_[i], *cell);
         if (RC::SUCCESS != rc) {

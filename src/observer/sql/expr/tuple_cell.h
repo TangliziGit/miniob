@@ -86,10 +86,10 @@ struct hash<TupleCell> {
     auto h = type + cell.length();
 
     if (type == CHARS || type == TEXTS) {
-      for (size_t i=0; cell.data()[i] != 0; i++)
+      for (int i=0; cell.data()[i] != 0; i++)
         h += cell.data()[i];
     } else {
-      for (size_t i = 0; i < cell.length(); i++)
+      for (int i = 0; i < cell.length(); i++)
         h += cell.data()[i];
     }
     return h;
