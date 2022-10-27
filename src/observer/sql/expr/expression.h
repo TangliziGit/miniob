@@ -47,6 +47,9 @@ public:
   virtual bool in(const TupleCell&cell){
     return false;
   }
+  virtual bool has_null(){
+    return false;
+  }
   virtual RC init(std::function<std::pair<std::vector<Tuple*>,RC>(Stmt *)> init_func){
     return RC::UNIMPLENMENT;
   }
@@ -114,6 +117,17 @@ public:
     return ExprType::VALUE;
   }
 
+  bool in(const TupleCell &cell)override{
+     if(tuple_cell_.is_null()&&cell.is_null()){
+       return false;
+     }
+     return tuple_cell_.compare(cell) == 0;
+  }
+
+  bool has_null()override{
+    return tuple_cell_.is_null();
+  }
+
   void get_tuple_cell(TupleCell &cell) const {
     cell = tuple_cell_;
   }
@@ -158,7 +172,7 @@ public:
   bool exist() override;
 
   bool in(const TupleCell &cell) override;
-
+  bool has_null() override;
   ExprType type() const override
   {
     return ExprType::SUB_SELECT;
@@ -183,7 +197,14 @@ class MultiValueExpr : public Expression {
   RC get_value(const Tuple &tuple, TupleCell &cell) override;
 
   bool in(const TupleCell &cell) override;
-
+  bool has_null() override{
+    for(auto &cell:values_){
+      if(cell.is_null()){
+        return true;
+      }
+    }
+    return false;
+  }
   ExprType type() const override
   {
     return ExprType::MULTI_VALUE;

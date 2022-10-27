@@ -71,33 +71,41 @@ std::pair<RC,bool> PredicateOperator::do_predicate(Tuple &tuple)
     Expression *left_expr = filter_unit->left();
     Expression *right_expr = filter_unit->right();
     CompOp comp = filter_unit->comp();
-    if (comp == EXISTS) {
-      return {rc, right_expr->exist()};
-    }
-    if(comp == NOT_EXISTS){
-      return {rc, !right_expr->exist()};
+    if (comp == EXISTS||comp==NOT_EXISTS) {
+      if( (comp ==EXISTS&&right_expr->exist())||(comp==NOT_EXISTS&&!right_expr->exist())){
+          continue;
+      }else{
+        return {rc, false};
+      }
     }
     TupleCell left_cell;
     TupleCell right_cell;
     if((rc = left_expr->get_value(tuple, left_cell))!= RC::SUCCESS){
       return {rc, false};
     }
-    if(comp == IN){
-      return {rc, !left_cell.is_null() && right_expr->in(left_cell)};
-    }
-    if(comp == NOT_IN){
-      return {rc, !left_cell.is_null() && !right_expr->in(left_cell)};
+    if(comp == IN ||comp==NOT_IN){
+      if(left_cell.is_null()||right_expr->has_null()){
+        return {rc, false};
+      }
+      if((comp==IN&&right_expr->in(left_cell))||(comp==NOT_IN&&!right_expr->in(left_cell))){
+        continue;
+      }
+      return {rc, false};
     }
     if((rc = right_expr->get_value(tuple, right_cell))!= RC::SUCCESS){
       return {rc, false};
     }
     if(left_cell.attr_type()==NULLS||right_cell.attr_type()==NULLS){
       /* 如果是null,除is的任何比较都是false */
-      if( comp==IS ){
-        return {rc,left_cell.is(right_cell)};
+      if( comp==IS&&left_cell.is(right_cell) ){
+        continue;
+      }else{
+        return {rc, false};
       }
-      if(comp == IS_NOT){
-        return {rc,!left_cell.is(right_cell)};
+      if(comp == IS_NOT &&!left_cell.is(right_cell)){
+        continue;
+      }else{
+        return {rc, false};
       }
       return {rc, false};
     }

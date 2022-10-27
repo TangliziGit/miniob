@@ -64,6 +64,26 @@ bool SubSelectExpr::in(const TupleCell &cell)
   return false;
 }
 
+bool SubSelectExpr::has_null()
+{
+  init_if_not();
+  for (auto tuple : tuples_) {
+    if (tuple->cell_num() != 1) {
+      /* todo(yin): err? */
+      return false;
+    }
+    TupleCell cur_cell;
+    if (tuple->cell_at(0, cur_cell) != RC::SUCCESS) {
+      /*todo(yin):err? */
+      return false;
+    }
+    if (cur_cell.is_null()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 RC SubSelectExpr::get_value(const Tuple &tuple, TupleCell &cell){
   RC rc = RC::SUCCESS;
   if ((rc = init_if_not()) != RC::SUCCESS) {
