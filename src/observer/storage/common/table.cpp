@@ -402,7 +402,7 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out){
   return RC::SUCCESS;
 }
 
-RC Table::copy_record(Record *record_in, Record *record_out){
+RC Table::copy_record(Record *record_in, Record *record_out)const{
   // 复制所有字段的值
   int record_size = table_meta_.record_size();
   char *record = new char[record_size];

@@ -14,9 +14,11 @@ See the Mulan PSL v2 for more details. */
 
 #pragma once
 
+#include <unordered_map>
 #include "rc.h"
 #include "sql/parser/parse_defs.h"
 
+class Table;
 class Db;
 
 enum class StmtType
@@ -53,6 +55,7 @@ public:
 
 public:
   static RC create_stmt(Db *db, const Query &query, Stmt *&stmt);
+  static RC create_stmt(Db *db, const Query &query, Stmt *&stmt,std::unordered_map<std::string, Table *>&name_map);
 
 private:
 };

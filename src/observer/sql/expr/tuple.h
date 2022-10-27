@@ -16,14 +16,14 @@ See the Mulan PSL v2 for more details. */
 
 #include <memory>
 #include <vector>
+#include <unordered_map>
 
 #include "common/log/log.h"
 #include "sql/parser/parse.h"
 #include "sql/expr/tuple_cell.h"
 #include "sql/expr/expression.h"
 #include "storage/record/record.h"
-
-class Table;
+#include "storage/common/table.h"
 
 class TupleCellSpec
 {
@@ -73,16 +73,16 @@ public:
   virtual RC  cell_spec_at(int index, const TupleCellSpec *&spec) const = 0;
   virtual Tuple* copy() const = 0;
   virtual void destroy() = 0;
-  virtual RC init(const std::map<std::string, int> &name_map)
-  {
-    return RC::UNIMPLENMENT;
-  };
 
   virtual RC set_tuple(const char *table_name, Tuple *tuple){
     return RC::UNIMPLENMENT;
   };
-
-
+  virtual RC append_table(const char *table_name){
+    return RC::UNIMPLENMENT;
+  }
+  virtual RC close_table(const char *table_name){
+    return RC::UNIMPLENMENT;
+  }
   // extract_cells just for function arguments extracting
   std::pair<Function::Arguments, RC> extract_cells(const std::vector<AbstractField *>& fields) const {
     Function::Arguments args;
@@ -129,8 +129,8 @@ public:
   Tuple* copy()const override{
     RowTuple *row_tuple = new RowTuple();
     row_tuple->table_ = table_;
-    /* todo(yin):mem leak */
-    row_tuple->record_ = new Record(*record_);
+    row_tuple->record_ = new Record();
+    table_->copy_record(record_, row_tuple->record_);
     for (size_t i = 0; i < speces_.size(); i++) {
       row_tuple->speces_.push_back(speces_[i]);
     }
@@ -138,10 +138,13 @@ public:
   }
 
   void destroy() override{
+    delete record_->data();
     delete record_;
+    speces_.clear();
     record_ = nullptr;
     table_ = nullptr;
   }
+
   void set_record(Record *record)
   {
     this->record_ = record;
@@ -333,43 +336,55 @@ public:
   CompositeTuple() = default;
   virtual ~CompositeTuple(){}
   CompositeTuple(CompositeTuple &composite_tuple) {
-    for (size_t i = 0; i < composite_tuple.tuples_.size(); i++) {
-      this->tuples_.push_back(new RowTuple(static_cast<RowTuple&>(*composite_tuple.tuples_[i])));
+    for (auto&itr:composite_tuple.tuples_) {
+      std::vector<Tuple *> tuples;
+      for(auto tuple:itr.second){
+        tuples.push_back(tuple->copy());
+      }
+      tuples_.insert({itr.first, tuples});
     }
-    this->name_map_ = composite_tuple.name_map_;
   }
 
   void destroy() override{
-    for(auto tuple:tuples_){
-      tuple->destroy();
-      delete tuple;
+    for(auto &itr:tuples_){
+      for(auto tuple:itr.second){
+        tuple->destroy();
+        delete tuple;
+      }
+      itr.second.clear();
     }
     tuples_.clear();
   }
 
   Tuple* copy()const override {
     CompositeTuple *composite_tuple = new CompositeTuple();
-    for(auto tuple:tuples_){
-      composite_tuple->tuples_.push_back(tuple->copy());
+    for(auto &itr:tuples_){
+      std::vector<Tuple *> tuples;
+      for (auto tuple : itr.second) {
+        tuples.push_back(tuple->copy());
+      }
+      composite_tuple->tuples_[itr.first] = tuples;
     }
-    composite_tuple->name_map_ = name_map_;
     return composite_tuple;
   }
 
-  RC init(const std::map<std::string,int> &name_map)override {
-    this->tuples_.resize(name_map.size());
-    this->name_map_ = name_map;
-    return RC::SUCCESS;
+  /* 用栈递归 */
+  RC append_table(const char *table_name)override{
+    tuples_[table_name].push_back(nullptr);
   }
 
   RC set_tuple(const char *table_name,Tuple * tuple)override
   {
-    auto itr = name_map_.find(table_name);
-    if(itr == name_map_.end())
-      return RC::SCHEMA_TABLE_EXIST;
-    int idx = itr->second;
-    this->tuples_[idx] = tuple;
+    auto itr = tuples_.find(table_name);
+    if(itr==tuples_.end()){
+      return RC::GENERIC_ERROR;
+    }
+    itr->second[itr->second.size() - 1] = tuple;
     return RC::SUCCESS;
+  }
+  
+  RC close_table(const char *table_name)override{
+    tuples_[table_name].pop_back();
   }
 
   int cell_num() const override{
@@ -388,8 +403,7 @@ public:
 
   RC find_cell(const Field &field, TupleCell &cell) const override
   {
-    int idx = name_map_.find(field.table_name())->second;
-    return tuples_.at(idx)->find_cell(field, cell);
+    return tuples_.find(field.table_name())->second.back()->find_cell(field, cell);
   }
   RC cell_spec_at(int index, const TupleCellSpec *&spec) const override
   {
@@ -397,6 +411,5 @@ public:
   }
 
 private:
-  std::vector<Tuple *> tuples_;
-  std::map<std::string, int> name_map_;
+  std::unordered_map<std::string,std::vector<Tuple *>> tuples_;
 };

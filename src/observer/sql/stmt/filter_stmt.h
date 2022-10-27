@@ -19,14 +19,13 @@ See the Mulan PSL v2 for more details. */
 #include "rc.h"
 #include "sql/parser/parse_defs.h"
 #include "sql/stmt/stmt.h"
+#include "sql/stmt/select_stmt.h"
 #include "sql/expr/expression.h"
 
 class Db;
 class Table;
 class FieldMeta;
-
-class FilterUnit
-{
+class FilterUnit {
 public:
   FilterUnit() = default;
   ~FilterUnit()
@@ -65,8 +64,15 @@ public:
   {
     return right_;
   }
+  void set_or_and(bool or_and){
+    or_and_ = or_and;
+  }
+  bool get_or_and(){
+    return or_and_;
+  }
 
 private:
+  bool or_and_;
   CompOp comp_ = NO_OP;
   Expression *left_ = nullptr;
   Expression *right_ = nullptr;
@@ -84,11 +90,18 @@ public:
   {
     return filter_units_;
   }
+  std::set<FilterUnit *> filter_copy() const
+  {
+    return filter_units_;
+  }
   void add_filter(FilterUnit * filter_unit){
     filter_units_.insert(filter_unit);
   }
   void remove_filter(FilterUnit * filter_unit){
     filter_units_.erase(filter_unit);
+  }
+  bool is_or(){
+    return is_or_;
   }
 
 public:
@@ -100,5 +113,6 @@ public:
 			       const Condition &condition, FilterUnit *&filter_unit);
 
 private:
-  std::set<FilterUnit *>  filter_units_; // 默认当前都是AND关系
+  std::set<FilterUnit *>  filter_units_;
+  bool is_or_;
 };

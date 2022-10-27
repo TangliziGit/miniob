@@ -34,7 +34,7 @@ public:
 
   StmtType type() const override { return StmtType::SELECT; }
 public:
-  static RC create(Db *db, const Selects &select_sql, Stmt *&stmt);
+  static RC create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unordered_map<std::string, Table *> &out_table_map);
 
 public:
   const std::vector<Table *> &tables() const { return tables_; }
@@ -45,10 +45,14 @@ public:
   bool has_aggregation() const { return has_aggregation_; }
   const std::vector<FunctionField *> &aggregation_fields() const { return aggregation_fields_; }
   const std::vector<FunctionField *> &hidden_aggregation_fields() const { return hidden_aggregation_fields_; }
-
   std::vector<OrderFlag> order_flag() { return order_flag_; };
   std::vector<Field*> order_field() {return order_fields_; };
+  bool contain_other_field(){
+    return contain_other_field_;
+  }
+
 private:
+  bool contain_other_field_;
   std::vector<AbstractField *> query_fields_;
   std::vector<Table *> tables_;
   FilterStmt *filter_stmt_ = nullptr;

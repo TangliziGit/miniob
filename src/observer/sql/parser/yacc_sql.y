@@ -140,6 +140,7 @@ void yyerror(yyscan_t scanner, const char *str)
         NULLABLE
 		EXISTS_T
 		IN_T
+		OR
 %union {
   struct _Attr *attr;
   struct _Condition *condition1;
@@ -691,14 +692,25 @@ in_value_list:%empty
    };
 where: %empty 
     /* empty */ 
-    | WHERE condition condition_list {	
+    | WHERE and_condition condition_list {	
 			}
     ;
 condition_list: %empty 
     /* empty */
-    | AND condition condition_list {
-			}
+    | AND and_condition condition_list {
+
+	}
+	| OR  or_condition condition_list {
+	}
     ;
+and_condition:
+   condition{
+	CONTEXT->conditions[CONTEXT->condition_length-1].is_and = 1;
+}
+or_condition:
+   condition{
+     CONTEXT->conditions[CONTEXT->condition_length-1].is_and = 0;
+};
 condition:
 	EXISTS_T value{
 		CONTEXT->comp = EXISTS;

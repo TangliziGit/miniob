@@ -53,7 +53,7 @@ bool same_field_exists(const std::vector<FunctionField *> &fields, AbstractField
   return false;
 }
 
-RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
+RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unordered_map<std::string, Table *>& out_table_map)
 {
   if (nullptr == db) {
     LOG_WARN("invalid argument. db is null");
@@ -62,6 +62,8 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
 
   // collect tables in `from` statement
   std::vector<Table *> tables;
+  /* 默认为true,即每次遇到都重新计算一下,后面如果出现超时问题就优化这里 */
+  bool contain_other_field = true;
   std::unordered_map<std::string, Table *> table_map;
   for (size_t i = 0; i < select_sql.relation_num; i++) {
     const char *table_name = select_sql.relations[i];
@@ -79,7 +81,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
     tables.push_back(table);
     table_map.insert(std::pair<std::string, Table*>(table_name, table));
   }
-  
+
   // collect query fields in `select` statement
   bool has_aggregation = false;
   std::vector<AbstractField *> query_fields;
@@ -187,9 +189,12 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
     default_table = tables[0];
   }
 
+  for(auto &itr:table_map){
+    out_table_map.insert({itr.first, itr.second});
+  }
   // create filter statement in `where` statement
   FilterStmt *filter_stmt = nullptr;
-  RC rc = FilterStmt::create(db, default_table, &table_map,
+  RC rc = FilterStmt::create(db, default_table, &out_table_map,
            select_sql.conditions, select_sql.condition_num, filter_stmt);
   if (rc != RC::SUCCESS) {
     LOG_WARN("cannot construct filter stmt");
@@ -256,7 +261,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
 
   // collect aggregation conditions in having clause
   FilterStmt *having_filter_stmt = nullptr;
-  rc = FilterStmt::create(db, default_table, &table_map,
+  rc = FilterStmt::create(db, default_table, &out_table_map,
       select_sql.having_conditions, select_sql.having_condition_num, having_filter_stmt);
   if (rc != RC::SUCCESS) {
     LOG_WARN("cannot construct having filter stmt");
@@ -300,6 +305,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
 
   // everything alright
   SelectStmt *select_stmt = new SelectStmt();
+  select_stmt->contain_other_field_ = contain_other_field;
   select_stmt->tables_.swap(tables);
   select_stmt->query_fields_.swap(query_fields);
   select_stmt->group_by_fields_.swap(group_by_fields);

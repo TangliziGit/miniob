@@ -427,9 +427,10 @@ static void find_filter(FilterStmt* filter_stmt,const std::map<std::string,int>&
       remove_unit.push_back(filter_unit);
     }
   }
-  for(auto filter_unit:remove_unit){
-    filter_stmt->remove_filter(filter_unit);
-  }
+  /* 不remove,因为sub_query可能会继续用 */
+  // for(auto filter_unit:remove_unit){
+  //   filter_stmt->remove_filter(filter_unit);
+  // }
 }
 
 std::pair<std::vector<Tuple *>, RC> execute_select(Stmt *stmt);
@@ -448,6 +449,8 @@ RC init_subselect_if_have(FilterStmt *filter_stmt)
   }
   return rc;
 }
+
+static CompositeTuple base_tuple;
 
 std::pair<std::vector<Tuple*>, RC> execute_select(Stmt *stmt){
   SelectStmt *select_stmt = (SelectStmt *)(stmt);
@@ -476,12 +479,18 @@ std::pair<std::vector<Tuple*>, RC> execute_select(Stmt *stmt){
     if (i != 0) {
       join_opers[i]->add_child(join_opers[i - 1]);
     }
+    base_tuple.append_table(table->name());
   }
-  join_opers[0]->init(name_idx);
+  join_opers[0]->init(&base_tuple);
 
-  DEFER([&]() { for (auto join_oper:join_opers){
+  DEFER([&]() { 
+    for (auto join_oper:join_opers){
       delete join_oper;
-    } });
+    }
+    for(auto table:tables){
+      base_tuple.close_table(table->name());
+    }
+  });
 
   Operator *temp_oper = join_opers.back();
   
@@ -536,6 +545,7 @@ std::pair<std::vector<Tuple*>, RC> execute_select(Stmt *stmt){
 
 RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 {
+  DEFER([&]() { base_tuple.destroy(); });
   SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
   
@@ -546,7 +556,6 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     session_event->set_response("FAILURE\n");
     return rc;
   }
-
   auto tables = select_stmt->tables();
   std::map<std::string, int> name_idx;
   auto filter = select_stmt->filter_stmt();
@@ -564,12 +573,18 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     if (i != 0) {
       join_opers[i]->add_child(join_opers[i - 1]);
     }
+    base_tuple.append_table(table->name());
   }
-  join_opers[0]->init(name_idx);
+  join_opers[0]->init(&base_tuple);
 
-  DEFER([&]() { for (auto join_oper:join_opers){
+  DEFER([&]() { 
+    for (auto join_oper:join_opers){
       delete join_oper;
-    } });
+    }
+    for(auto table:tables){
+      base_tuple.close_table(table->name());
+    }
+  });
 
   Operator *temp_oper = join_opers.back();
   if (select_stmt->order_flag().size()!=0) {
@@ -808,6 +823,7 @@ RC ExecuteStage::do_insert(SQLStageEvent *sql_event)
 
 RC ExecuteStage::do_update(SQLStageEvent *sql_event)
 {
+  DEFER([&]() { base_tuple.destroy(); });
   Stmt *stmt = sql_event->stmt();
   SessionEvent *session_event = sql_event->session_event();
   Session *session = session_event->session();
@@ -821,7 +837,7 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event)
   }
 
   UpdateStmt *update_stmt = (UpdateStmt *)stmt;
-  
+
   RC rc = RC::SUCCESS;
   std::vector<Tuple*> tuples;
   rc = init_subselect_if_have(update_stmt->filter());

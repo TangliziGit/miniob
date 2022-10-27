@@ -94,6 +94,7 @@ typedef struct _Value {
   int is_query;
 } Value;
 typedef struct _Condition {
+  int is_and;
   int left_is_attr;    // TRUE if left-hand side is an attribute
                        // 1时，操作符左边是属性名，0时，是属性值
   Value left_value;    // left-hand side value if left_is_attr = FALSE

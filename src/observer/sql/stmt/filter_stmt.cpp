@@ -136,7 +136,7 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
     if(condition.left_value.is_query){
       Query *query = (Query*)condition.left_value.data;
       Stmt *select_stmt = nullptr;
-      if((rc = SelectStmt::create_stmt(db, *query, select_stmt))!= RC::SUCCESS){
+      if((rc = SelectStmt::create_stmt(db, *query, select_stmt,*tables))!= RC::SUCCESS){
         return rc;
       }
       size_t query_num = ((SelectStmt *)select_stmt)->query_fields().size();
@@ -172,7 +172,7 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
     if (condition.right_value[0].is_query) {
       Query *query = (Query*)condition.right_value[0].data;
       Stmt *select_stmt = nullptr;
-      if ((rc = SelectStmt::create_stmt(db, *query, select_stmt)) != RC::SUCCESS) {
+      if((rc = SelectStmt::create_stmt(db, *query, select_stmt,*tables))!= RC::SUCCESS){
         return rc;
       }
       size_t query_num = ((SelectStmt *)select_stmt)->query_fields().size();

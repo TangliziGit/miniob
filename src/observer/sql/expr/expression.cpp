@@ -26,8 +26,9 @@ RC ValueExpr::get_value(const Tuple &tuple, TupleCell & cell)
   return RC::SUCCESS;
 }
 bool SubSelectExpr::exist(){
-    /* todo(yin) check err here */
-    init_if_not();
+    if(need_execute()){
+      execute();
+    }
     for (auto &tuple : tuples_){
       int cell_nul = tuple->cell_num();
       for (int i = 0; i < cell_nul;i++){
@@ -41,9 +42,31 @@ bool SubSelectExpr::exist(){
     return false;
 }
 
+SubSelectExpr::~SubSelectExpr(){
+  delete select_stmt_;
+  for (auto tuple : tuples_) {
+    tuple->destroy();
+    delete tuple;
+  }
+  tuples_.clear();
+}
+
+RC SubSelectExpr::execute(){
+    for(auto tuple:tuples_){
+      tuple->destroy();
+      delete tuple;
+    }
+    tuples_.clear();
+    auto res = init_func_(select_stmt_);
+    tuples_.swap(res.first);
+    return res.second;
+}
+
 bool SubSelectExpr::in(const TupleCell &cell)
 {
-  init_if_not();
+  if(need_execute()){
+    execute();
+  }
   for (auto tuple : tuples_) {
     if (tuple->cell_num() != 1) {
       /* todo(yin): err? */
@@ -66,7 +89,9 @@ bool SubSelectExpr::in(const TupleCell &cell)
 
 bool SubSelectExpr::has_null()
 {
-  init_if_not();
+  if (need_execute()) {
+    execute();
+  }
   for (auto tuple : tuples_) {
     if (tuple->cell_num() != 1) {
       /* todo(yin): err? */
@@ -86,7 +111,10 @@ bool SubSelectExpr::has_null()
 
 RC SubSelectExpr::get_value(const Tuple &tuple, TupleCell &cell){
   RC rc = RC::SUCCESS;
-  if ((rc = init_if_not()) != RC::SUCCESS) {
+  if(need_execute()){
+    rc = execute();
+  }
+  if (rc != RC::SUCCESS) {
     return rc;
   }
   if(tuples_.size() == 0){

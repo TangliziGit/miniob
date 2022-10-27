@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/delete_stmt.h"
 #include "sql/stmt/select_stmt.h"
 #include "sql/stmt/update_stmt.h"
+#include "storage/common/table.h"
 
 RC Stmt::create_stmt(Db *db, const Query &query, Stmt *&stmt)
 {
@@ -32,7 +33,34 @@ RC Stmt::create_stmt(Db *db, const Query &query, Stmt *&stmt)
       return DeleteStmt::create(db, query.sstr.deletion, stmt);   
     }
   case SCF_SELECT: {
-    return SelectStmt::create(db, query.sstr.selection, stmt);
+    std::unordered_map<std::string, Table *> name_map;
+    return SelectStmt::create(db, query.sstr.selection, stmt, name_map);
+  }
+  case SCF_UPDATE: {
+    return UpdateStmt::create(db, query.sstr.update, stmt);
+  }
+  default: {
+      LOG_WARN("unknown query command");
+    }
+    break;
+  }
+  return RC::UNIMPLENMENT;
+}
+
+RC Stmt::create_stmt(Db *db, const Query &query, Stmt *&stmt,std::unordered_map<std::string, Table *> &name_map)
+{
+  stmt = nullptr;
+
+  switch (query.flag) {
+  case SCF_INSERT: {
+      return InsertStmt::create(db, query.sstr.insertion, stmt);
+    }
+    break;
+  case SCF_DELETE: {
+      return DeleteStmt::create(db, query.sstr.deletion, stmt);   
+    }
+  case SCF_SELECT: {
+    return SelectStmt::create(db, query.sstr.selection, stmt, name_map);
   }
   case SCF_UPDATE: {
     return UpdateStmt::create(db, query.sstr.update, stmt);

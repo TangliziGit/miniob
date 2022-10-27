@@ -16,11 +16,10 @@ public:
   {}
 
   virtual ~JoinOperator() = default;
-  void init(std::map<std::string,int>name_idx){
-    if(is_base_oper()){
-      tuple_ = new CompositeTuple();
-      tuple_->init(name_idx);
-    }
+  void init(Tuple* tuple){
+      if(is_base_oper()){
+          tuple_ = tuple;
+      }
   }
   bool is_base_oper(){
     return children_.size() == 0;
@@ -67,7 +66,7 @@ public:
           return rc;
         }
       }
-      tuple_->set_tuple(table_->name(), right_oper_->current_tuple());
+      tuple_->set_tuple(table_->name(), right_oper_->current_tuple()->copy());
       auto res = do_predicate(*tuple_);
       if (res.first==RC::SUCCESS&&!res.second) {
         continue;
@@ -79,7 +78,6 @@ public:
   RC close() override{
     right_oper_->close();
     if(is_base_oper()){
-      delete tuple_;
     }else{
       children_[0]->close();
     }

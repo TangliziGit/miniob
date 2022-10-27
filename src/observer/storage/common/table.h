@@ -101,6 +101,7 @@ private:
 
 public:
   RC recover_insert_record(Record *record);
+  RC copy_record(Record *record_in, Record *record_out)const;
 
 private:
   friend class RecordUpdater;
@@ -109,10 +110,10 @@ private:
   RC insert_entry_of_indexes(const char *record, const RID &rid);
   RC delete_entry_of_indexes(const char *record, const RID &rid, bool error_on_not_exists);
 
+
 private:
   RC init_record_handler(const char *base_dir);
   RC make_record(int value_num, const Value *values, char *&record_out);
-  RC copy_record(Record *record_in, Record *record_out);
 
 public:
   Index *find_index(const char *index_name) const;

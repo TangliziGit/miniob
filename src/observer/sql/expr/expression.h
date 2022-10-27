@@ -143,34 +143,21 @@ public:
   SubSelectExpr() = default;
   explicit SubSelectExpr(Stmt *select_stmt) : select_stmt_(select_stmt) {}
 
-  virtual ~SubSelectExpr() = default;
-  // {
-    // delete select_stmt_;
-    // for (auto tuple : tuples_) {
-    //   delete tuple;
-    // }
-    // tuples_.clear();
-  // }
-  RC init(std::function<std::pair<std::vector<Tuple*>,RC>(Stmt *)> init_func) override{
+  virtual ~SubSelectExpr();
+  RC init(std::function<std::pair<std::vector<Tuple *>, RC>(Stmt *)> init_func) override
+  {
     init_func_ = init_func;
     return RC::SUCCESS;
   }
-  
-  RC init_if_not(){
-    /* lazy */
-    if(select_stmt_!=nullptr){
-      auto res = init_func_(select_stmt_);
-      tuples_.swap(res.first);
-      delete select_stmt_;
-      select_stmt_ = nullptr;
-      return res.second;
-    }
-    return RC::SUCCESS;
-  }
+
+  RC execute();
+
   RC get_value(const Tuple &tuple, TupleCell &cell) override;
 
   bool exist() override;
-
+  bool need_execute(){
+    return ((SelectStmt *)(select_stmt_))->contain_other_field();
+  }
   bool in(const TupleCell &cell) override;
   bool has_null() override;
   ExprType type() const override
@@ -180,7 +167,7 @@ public:
 private:
   std::function<std::pair<std::vector<Tuple*>, RC>(Stmt *)> init_func_;
   Stmt *select_stmt_;
-  std::vector<Tuple*> tuples_;
+  std::vector<Tuple *> tuples_;
 };
 
 class MultiValueExpr : public Expression {

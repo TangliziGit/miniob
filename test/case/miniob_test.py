@@ -52,7 +52,7 @@ python3 miniob_test.py \
         --test-result-dir=result \
         --test-result-tmp-dir=./result_tmp \
         --use-unix-socket \
-        --git-repo=https://gitee.com/chunxu-zhang/miniob \
+        --git-repo=git@gitee.com:chunxu-zhang/miniob.git \
         --git-branch=main \
         --code-type=git \
         --target-dir=./miniob \
@@ -1066,7 +1066,7 @@ def __init_options():
                             help='the git repo in https')
   options_parser.add_option('', '--git-branch', action='store', dest='git_branch', default='',
                             help='the git repo branch')
-  options_parser.add_option('', '--git-repo-prefix', action='store', dest='git_repo_prefix', default='https://github.com',
+  options_parser.add_option('', '--git-repo-prefix', action='store', dest='git_repo_prefix', default='git',
                             help='the git repo prefix in https')
   options_parser.add_option('', '--git-user', action='store', dest='git_user', default='',
                             help='git user name to download source code')
