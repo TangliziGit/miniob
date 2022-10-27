@@ -15,6 +15,7 @@ See the Mulan PSL v2 for more details. */
 #pragma once
 
 #include <unordered_map>
+#include <string>
 #include "rc.h"
 #include "sql/parser/parse_defs.h"
 
