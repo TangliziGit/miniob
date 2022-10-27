@@ -169,8 +169,8 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       right = new FieldExpr(table, field);
     }
   } else {
-    if (condition.right_value.is_query) {
-      Query *query = (Query*)condition.right_value.data;
+    if (condition.right_value[0].is_query) {
+      Query *query = (Query*)condition.right_value[0].data;
       Stmt *select_stmt = nullptr;
       if ((rc = SelectStmt::create_stmt(db, *query, select_stmt)) != RC::SUCCESS) {
         return rc;
@@ -181,7 +181,11 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       }
       right = new SubSelectExpr(select_stmt);
     } else {
-      right = new ValueExpr(condition.right_value);
+      if(condition.comp!=IN&&condition.comp!=NOT_IN){
+        right = new ValueExpr(condition.right_value[0]);
+      }else{
+        right = new MultiValueExpr(condition.right_value_num, condition.right_value);
+      }
     }
   }
 

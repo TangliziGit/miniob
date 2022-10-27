@@ -24,6 +24,8 @@ typedef struct ParserContext {
   RelAttr group_by_attrs[MAX_NUM];
   size_t having_condition_length;
   Condition having_conditions[MAX_NUM];
+  size_t in_value_num;
+  Value in_value[MAX_NUM];
   size_t insert_num;
   size_t insert_value_length[MAX_NUM];
   Value insert_values[MAX_NUM][MAX_NUM];
@@ -523,7 +525,7 @@ having_condition_list: %empty
 	| AND having_condition having_condition_list {};
 
 having_condition:
-    	function comOp value {
+    function comOp value {
 		Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
 
 		Condition condition;
@@ -680,6 +682,13 @@ rel_list: %empty
     | COMMA rel_id rel_list {	
 		  }
     ;
+in_value:%empty
+   | value{
+	CONTEXT->in_value[CONTEXT->in_value_num++] = *$1;
+   };
+in_value_list:%empty
+   | COMMA in_value in_value_list{
+   };
 where: %empty 
     /* empty */ 
     | WHERE condition condition_list {	
@@ -707,41 +716,65 @@ condition:
 		condition_init(&condition, CONTEXT->comp, 0, NULL, NULL, 0, NULL, right_value);
 		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 	}
-    | ID comOp value 
-		{
-			RelAttr left_attr;
-			relation_attr_init(&left_attr, NULL, $1);
+	| ID comOp LBRACE in_value in_value_list RBRACE{
+		RelAttr left_attr;
+		relation_attr_init(&left_attr, NULL, $1);
 
-			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+		Condition condition;
+		condition_in_init(&condition, CONTEXT->comp, 1, &left_attr, NULL,CONTEXT->in_value_num,CONTEXT->in_value);
+		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+		CONTEXT->in_value_num = 0;
+	}
+	| ID DOT ID comOp LBRACE in_value in_value_list RBRACE{
+		RelAttr left_attr;
+		relation_attr_init(&left_attr,$1, $3);
 
-			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
-			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+		Condition condition;
+		condition_in_init(&condition, CONTEXT->comp, 1, &left_attr, NULL,CONTEXT->in_value_num,CONTEXT->in_value);
+		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+		CONTEXT->in_value_num = 0;
+	}
+	| value comOp LBRACE in_value in_value_list RBRACE {
+		Value *left_value = $1;
 
-		}
-		|value comOp value 
-		{
-			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 2];
-			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+		Condition condition;
+		condition_in_init(&condition, CONTEXT->comp, 0, NULL, left_value,CONTEXT->in_value_num,CONTEXT->in_value);
+		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+		CONTEXT->in_value_num = 0;
+	}
+    | ID comOp value {
+		RelAttr left_attr;
+		relation_attr_init(&left_attr, NULL, $1);
 
-			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 0, NULL, right_value);
-			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
-		}
-		|ID comOp ID 
-		{
-			RelAttr left_attr;
-			relation_attr_init(&left_attr, NULL, $1);
-			RelAttr right_attr;
-			relation_attr_init(&right_attr, NULL, $3);
+		Value *right_value = $3;
 
-			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
-			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
-		}
+		Condition condition;
+		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
+		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+
+	}
+	|value comOp value 
+	{
+		Value *left_value = $1;
+		Value *right_value = $3;
+
+		Condition condition;
+		condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 0, NULL, right_value);
+		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+	}
+	|ID comOp ID {
+		RelAttr left_attr;
+		relation_attr_init(&left_attr, NULL, $1);
+		RelAttr right_attr;
+		relation_attr_init(&right_attr, NULL, $3);
+
+		Condition condition;
+		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
+		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+	}
     |value comOp ID
 		{
-			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
+			Value *left_value = $1;
 			RelAttr right_attr;
 			relation_attr_init(&right_attr, NULL, $3);
 
@@ -754,7 +787,7 @@ condition:
 		{
 			RelAttr left_attr;
 			relation_attr_init(&left_attr, $1, $3);
-			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+			Value *right_value = $5;
 
 			Condition condition;
 			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
@@ -764,7 +797,7 @@ condition:
     }
     |value comOp ID DOT ID
 		{
-			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
+			Value *left_value = $1;
 
 			RelAttr right_attr;
 			relation_attr_init(&right_attr, $3, $5);

@@ -30,6 +30,7 @@ enum class ExprType {
   FUNCTION,
   ALIAS,
   SUB_SELECT,
+  MULTI_VALUE,
 };
 
 class Expression
@@ -168,6 +169,29 @@ private:
   std::vector<Tuple*> tuples_;
 };
 
+class MultiValueExpr : public Expression {
+  public:
+  MultiValueExpr() = default;
+  explicit MultiValueExpr(const std::vector<TupleCell> &values):values_(values) {}
+  MultiValueExpr(int value_num, const Value *value){
+    for (int i = 0; i < value_num;i++){
+      values_.push_back(TupleCell(value[i].type, (char *)value[i].data));
+    }
+  }
+
+  virtual ~MultiValueExpr() = default;
+  RC get_value(const Tuple &tuple, TupleCell &cell) override;
+
+  bool in(const TupleCell &cell) override;
+
+  ExprType type() const override
+  {
+    return ExprType::MULTI_VALUE;
+  }
+
+private:
+  std::vector<TupleCell> values_;
+};
 class FunctionExpr : public Expression {
 public:
   explicit FunctionExpr(std::vector<AbstractField *> fields, Function *function)

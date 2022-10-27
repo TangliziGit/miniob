@@ -35,7 +35,7 @@ public:
   Table *table() const {return table_;}
   FilterStmt *filter() const { return filter_; }
   const std::vector<const char *> &attribute_name() const { return attr_name_; }
-  const std::vector<Value> &value() const { return value_; }
+  std::vector<Value> &value(){ return value_; }
   int attr_num(){
     return attr_name_.size();
   }

@@ -39,6 +39,7 @@ RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
   std::vector<const char *> attr_name;
   std::vector<Value> value;
   int num = update.attr_num;
+  RC rc = RC::SUCCESS;
   for (int i = 0; i < num; i++) {
     const FieldMeta *attr_meta = table->table_meta().field(update.attribute_name[i]);
     if (attr_meta == nullptr) {
@@ -49,7 +50,7 @@ RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
       return RC::SCHEMA_FIELD_NOT_EXIST;
     }
     Value new_value = update.value[i];
-    if (attr_meta->type() != update.value[i].type&&update.value[i].type!=NULLS) {
+    if (attr_meta->type() != update.value[i].type&&update.value[i].type!=NULLS&&!update.value[i].is_query) {
       RC rc = cast_to(&new_value, attr_meta->type());
       if (rc != RC::SUCCESS) {
         return rc;
@@ -58,6 +59,7 @@ RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
     if(update.value[i].type == NULLS && !attr_meta->nullable()){
       return RC::SCHEMA_FIELD_TYPE_MISMATCH;
     }
+    
     attr_name.emplace_back(update.attribute_name[i]);
     value.emplace_back(new_value);
   }
@@ -66,7 +68,7 @@ RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
   table_map.insert(std::pair<std::string, Table *>(std::string(table_name), table));
 
   FilterStmt *filter_stmt = nullptr;
-  RC rc = FilterStmt::create(db, table, &table_map,
+  rc = FilterStmt::create(db, table, &table_map,
                              update.conditions, update.condition_num, filter_stmt);
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to create filter statement. rc=%d:%s", rc, strrc(rc));

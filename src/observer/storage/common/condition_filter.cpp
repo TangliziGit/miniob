@@ -103,8 +103,8 @@ RC DefaultConditionFilter::init(Table &table, const Condition &condition)
     right.value = nullptr;
   } else {
     right.is_attr = false;
-    right.value = condition.right_value.data;
-    type_right = condition.right_value.type;
+    right.value = condition.right_value[0].data;
+    type_right = condition.right_value[0].type;
 
     right.attr_length = 0;
     right.attr_offset = 0;

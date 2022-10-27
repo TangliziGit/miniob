@@ -80,6 +80,32 @@ RC SubSelectExpr::get_value(const Tuple &tuple, TupleCell &cell){
   return rc;
 }
 
+RC MultiValueExpr::get_value(const Tuple &tuple, TupleCell &cell){
+  RC rc = RC::SUCCESS;
+  if(values_.size() == 0){
+    cell.set_type(AttrType::NULLS);
+    return RC::SUCCESS;
+  }
+  if (values_.size() != 1) {
+    return RC::MISMATCH;
+  }
+  cell = values_[0];
+  return rc;
+}
+
+bool MultiValueExpr::in(const TupleCell &cell){
+  for(auto &in_cell:values_){
+    if(in_cell.is_null()){
+      continue;
+    }
+    if(in_cell.compare(cell)==0){
+      return true;
+    }
+  }
+  return false;
+}
+
+
 RC FunctionExpr::get_value(const Tuple &tuple, TupleCell &result)
 {
   auto args = tuple.extract_cells(fields_);

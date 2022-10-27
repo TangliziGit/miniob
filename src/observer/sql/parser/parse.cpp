@@ -153,6 +153,20 @@ void value_destroy(Value *value)
   value->data = nullptr;
 }
 
+void condition_in_init(Condition *condition, CompOp comp,int left_is_attr, RelAttr *left_attr, Value *left_value, int value_num, Value *right_value){
+  condition->comp = comp;
+  condition->left_is_attr = left_is_attr;
+  if (left_is_attr) {
+    condition->left_attr = *left_attr;
+  } else {
+    condition->left_value = *left_value;
+  }
+  condition->right_value_num = value_num;
+  condition->right_is_attr = 0;
+  for (int i = 0; i < value_num; i++) {
+    condition->right_value[i] = right_value[i];
+  }
+}
 void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr *left_attr, Value *left_value,
     int right_is_attr, RelAttr *right_attr, Value *right_value)
 {
@@ -170,7 +184,8 @@ void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr
   if (right_is_attr) {
     condition->right_attr = *right_attr;
   } else {
-    condition->right_value = *right_value;
+    condition->right_value[0] = *right_value;
+    condition->right_value_num = 1;
   }
 }
 void condition_destroy(Condition *condition)
@@ -183,7 +198,10 @@ void condition_destroy(Condition *condition)
   if (condition->right_is_attr) {
     relation_attr_destroy(&condition->right_attr);
   } else {
-    value_destroy(&condition->right_value);
+    for (int i = 0; i < condition->right_value_num;i++){
+      value_destroy(&condition->right_value[i]);
+    }
+    condition->right_value_num = 0;
   }
 }
 

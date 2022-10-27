@@ -432,24 +432,24 @@ static void find_filter(FilterStmt* filter_stmt,const std::map<std::string,int>&
   }
 }
 
-std::pair<std::vector<Tuple *>, RC> do_select(Stmt *stmt);
+std::pair<std::vector<Tuple *>, RC> execute_select(Stmt *stmt);
 RC init_subselect_if_have(FilterStmt *filter_stmt)
 {
   RC rc = RC::SUCCESS;
   for (auto filter_unit : filter_stmt->filter_units()) {
     Expression *left = filter_unit->left();
-    if(left->type() == ExprType::SUB_SELECT &&((rc = left->init(do_select))!= RC::SUCCESS)){
+    if(left->type() == ExprType::SUB_SELECT &&((rc = left->init(execute_select))!= RC::SUCCESS)){
       return rc;
     }
     Expression *right = filter_unit->right();
-    if(right->type() == ExprType::SUB_SELECT &&((rc = right->init(do_select))!= RC::SUCCESS)){
+    if(right->type() == ExprType::SUB_SELECT &&((rc = right->init(execute_select))!= RC::SUCCESS)){
       return rc;
     }
   }
   return rc;
 }
 
-std::pair<std::vector<Tuple*>, RC> do_select(Stmt *stmt){
+std::pair<std::vector<Tuple*>, RC> execute_select(Stmt *stmt){
   SelectStmt *select_stmt = (SelectStmt *)(stmt);
   /* 为子查询设置好do_select执行函数,目前为lazy方案 */
   RC rc = RC::SUCCESS;
@@ -484,6 +484,7 @@ std::pair<std::vector<Tuple*>, RC> do_select(Stmt *stmt){
     } });
 
   Operator *temp_oper = join_opers.back();
+  
   PredicateOperator pred_oper(select_stmt->filter_stmt());
   pred_oper.add_child(temp_oper);
 
@@ -823,7 +824,44 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event)
     session_event->set_response("FAILURE\n");
     return rc;
   }
-
+  std::vector<Value> &values = update_stmt->value();
+  for (size_t i = 0; i < values.size(); i++) {
+    if (values[i].is_query) {
+      Query *query = (Query *)values[i].data;
+      Stmt *select_stmt = nullptr;
+      if ((rc = SelectStmt::create_stmt(db, *query, select_stmt)) != RC::SUCCESS) {
+        session_event->set_response("FAILURE\n");
+        return rc;
+      }
+      size_t query_num = ((SelectStmt *)select_stmt)->query_fields().size();
+      if (query_num > 1) {
+        session_event->set_response("FAILURE\n");
+        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      }
+      SubSelectExpr *right = new SubSelectExpr(select_stmt);
+      right->init(execute_select);
+      TupleCell cell;
+      RowTuple tmp;
+      if ((rc = right->get_value(tmp, cell)) != RC::SUCCESS) {
+        session_event->set_response("FAILURE\n");
+        return rc;
+      }
+      Value new_value;
+      new_value.data = cell.data();
+      new_value.type = cell.attr_type();
+      new_value.is_query = 0;
+      Table *table = update_stmt->table();
+      const char *field_name = update_stmt->attribute_name().at(i);
+      const FieldMeta *field_meta = table->table_meta().field(field_name);
+      if (field_meta->type() != new_value.type && new_value.type != NULLS) {
+        if ((rc = cast_to(&new_value, field_meta->type())) != RC::SUCCESS) {
+          session_event->set_response("FAILURE\n");
+          return rc;
+        }
+      }
+      values[i] = new_value;
+    }
+  }
   TableScanOperator scan_oper(update_stmt->table());
   PredicateOperator pred_oper(update_stmt->filter());
   pred_oper.add_child(&scan_oper);

@@ -102,7 +102,8 @@ typedef struct _Condition {
   int right_is_attr;   // TRUE if right-hand side is an attribute
                        // 1时，操作符右边是属性名，0时，是属性值
   RelAttr right_attr;  // right-hand side attribute if right_is_attr = TRUE 右边的属性
-  Value right_value;   // right-hand side value if right_is_attr = FALSE
+  int right_value_num;    // value num for (NOT) IN comp
+  Value right_value[MAX_NUM];  // right-hand side value if right_is_attr = FALSE
 } Condition;
 
 // struct of select
@@ -260,6 +261,8 @@ void value_destroy(Value *value);
 
 void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr *left_attr, Value *left_value,
     int right_is_attr, RelAttr *right_attr, Value *right_value);
+void condition_in_init(Condition *condition, CompOp comp,int left_is_attr, RelAttr *left_attr, Value *left_value,
+    int value_num, Value *right_value);
 void condition_destroy(Condition *condition);
 
 void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length,int nullable);
