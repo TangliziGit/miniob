@@ -83,11 +83,11 @@ std::pair<RC,bool> PredicateOperator::do_predicate(Tuple &tuple)
     if((rc = left_expr->get_value(tuple, left_cell))!= RC::SUCCESS){
       return {rc, false};
     }
-    if(comp == IN ||comp==NOT_IN){
-      if(left_cell.is_null()||right_expr->has_null()){
+    if(comp == IN||comp==NOT_IN){
+      if(left_cell.is_null()){
         return {rc, false};
       }
-      if((comp==IN&&right_expr->in(left_cell))||(comp==NOT_IN&&!right_expr->in(left_cell))){
+      if((comp==IN&&right_expr->in(left_cell))||(comp==NOT_IN&&!right_expr->has_null()&&!right_expr->in(left_cell))){
         continue;
       }
       return {rc, false};
@@ -99,13 +99,9 @@ std::pair<RC,bool> PredicateOperator::do_predicate(Tuple &tuple)
       /* 如果是null,除is的任何比较都是false */
       if( comp==IS&&left_cell.is(right_cell) ){
         continue;
-      }else{
-        return {rc, false};
       }
       if(comp == IS_NOT &&!left_cell.is(right_cell)){
         continue;
-      }else{
-        return {rc, false};
       }
       return {rc, false};
     }
