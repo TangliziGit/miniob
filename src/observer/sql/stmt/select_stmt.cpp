@@ -22,10 +22,10 @@ See the Mulan PSL v2 for more details. */
 
 SelectStmt::~SelectStmt()
 {
-  if (nullptr != filter_stmt_) {
-    delete filter_stmt_;
-    filter_stmt_ = nullptr;
-  }
+  // if (nullptr != filter_stmt_) {
+  //   delete filter_stmt_;
+  //   filter_stmt_ = nullptr;
+  // }
 }
 
 static void wildcard_fields(Table *table, std::vector<Field *> &field_metas)

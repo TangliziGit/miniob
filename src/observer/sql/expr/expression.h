@@ -41,6 +41,9 @@ public:
   
   virtual RC get_value(const Tuple &tuple, TupleCell &cell)= 0;
   virtual ExprType type() const = 0;
+  virtual Expression *copy()const {
+    return nullptr;
+  }
   virtual std::pair<bool,RC> exist(){
     return {false, RC::UNIMPLENMENT};
   }
@@ -64,6 +67,10 @@ public:
 
   virtual ~FieldExpr() = default;
 
+  Expression*copy()const override{
+    FieldExpr *field_expr = new FieldExpr(field_.table(), field_.meta());
+    return field_expr;
+  }
   ExprType type() const override
   {
     return ExprType::FIELD;
@@ -104,6 +111,11 @@ public:
     if (value.type == CHARS) {
       tuple_cell_.set_length(strlen((const char *)value.data));
     }
+  }
+
+  Expression*copy()const override{
+    ValueExpr *field_expr = new ValueExpr(tuple_cell_);
+    return field_expr;
   }
 
   virtual ~ValueExpr() = default;

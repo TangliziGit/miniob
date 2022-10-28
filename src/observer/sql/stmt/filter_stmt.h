@@ -30,14 +30,14 @@ public:
   FilterUnit() = default;
   ~FilterUnit()
   {
-    if (left_) {
-      delete left_;
-      left_ = nullptr;
-    }
-    if (right_) {
-      delete right_;
-      right_ = nullptr;
-    }
+    // if (left_) {
+    //   delete left_;
+    //   left_ = nullptr;
+    // }
+    // if (right_) {
+    //   delete right_;
+    //   right_ = nullptr;
+    // }
   }
   
   void set_comp(CompOp comp) {

@@ -138,8 +138,8 @@ public:
   }
 
   void destroy() override{
-    delete record_->data();
-    delete record_;
+    // delete record_->data();
+    // delete record_;
     speces_.clear();
     record_ = nullptr;
     table_ = nullptr;
@@ -254,16 +254,16 @@ public:
       proj_tuple->tuple_ = tuple_->copy();
     }
     for(TupleCellSpec*spec:speces_){
-      proj_tuple->speces_.push_back(spec);
+      proj_tuple->speces_.push_back(new TupleCellSpec(*spec));
     }
     return proj_tuple;
   }
 
   void destroy() override{
-    if(tuple_!=nullptr){
-      tuple_->destroy();
-      delete tuple_;
-    }
+    // if(tuple_!=nullptr){
+    //   tuple_->destroy();
+    //   delete tuple_;
+    // }
     tuple_ = nullptr;
   }
 

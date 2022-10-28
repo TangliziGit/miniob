@@ -33,12 +33,12 @@ SQLStageEvent::~SQLStageEvent() noexcept
   }
 
   if (query_ != nullptr) {
-    query_destroy(query_);
+    // query_destroy(query_);
     query_ = nullptr;
   }
 
   if (stmt_ != nullptr) {
-    delete stmt_;
+    // delete stmt_;
     stmt_ = nullptr;
   }
 }
