@@ -25,88 +25,104 @@ RC ValueExpr::get_value(const Tuple &tuple, TupleCell & cell)
   cell = tuple_cell_;
   return RC::SUCCESS;
 }
-bool SubSelectExpr::exist(){
-    if(need_execute()){
-      execute();
+std::pair<bool,RC> SubSelectExpr::exist(){
+  RC rc = RC::SUCCESS;
+  if (need_execute()) {
+    rc = execute();
+    if(rc != RC::SUCCESS){
+      return {false, rc};
     }
+  }
     for (auto &tuple : tuples_){
       int cell_nul = tuple->cell_num();
       for (int i = 0; i < cell_nul;i++){
         TupleCell cell;
         tuple->cell_at(i, cell);
         if (!cell.is_null()) {
-          return true;
+          return {true, rc};
         }
       }
     }
-    return false;
+    return {false, rc};
 }
 
 SubSelectExpr::~SubSelectExpr(){
-  delete select_stmt_;
-  for (auto tuple : tuples_) {
-    tuple->destroy();
-    delete tuple;
-  }
+  // delete select_stmt_;
+  // for (auto tuple : tuples_) {
+  //   tuple->destroy();
+  //   delete tuple;
+  // }
   tuples_.clear();
 }
 
 RC SubSelectExpr::execute(){
-    for(auto tuple:tuples_){
-      tuple->destroy();
-      delete tuple;
-    }
+    // for(auto tuple:tuples_){
+      // tuple->destroy();
+      // delete tuple;
+    // }
     tuples_.clear();
     auto res = init_func_(select_stmt_);
+    if(res.second != RC::SUCCESS){
+      return res.second;
+    }
     tuples_.swap(res.first);
     return res.second;
 }
 
-bool SubSelectExpr::in(const TupleCell &cell)
+std::pair<bool,RC> SubSelectExpr::in(const TupleCell &cell)
 {
-  if(need_execute()){
-    execute();
+  RC rc = RC::SUCCESS;
+  if (need_execute()) {
+    rc =execute();
+    if(rc != RC::SUCCESS){
+      return {false, rc};
+    }
   }
   for (auto tuple : tuples_) {
     if (tuple->cell_num() != 1) {
-      /* todo(yin): err? */
-      return false;
+      return {false, RC::MISMATCH};
     }
     TupleCell cur_cell;
     if (tuple->cell_at(0, cur_cell) != RC::SUCCESS) {
-      /*todo(yin):err? */
-      return false;
+      return {false, RC::MISMATCH};
     }
     if (cur_cell.is_null()) {
       continue;
     }
     if (cur_cell.compare(cell) == 0) {
-      return true;
+      return {true, rc};
     }
   }
-  return false;
+  return {false, rc};
 }
 
-bool SubSelectExpr::has_null()
+std::pair<bool,RC> SubSelectExpr::not_in(const TupleCell &cell)
 {
+  RC rc = RC::SUCCESS;
   if (need_execute()) {
-    execute();
+   rc =  execute();
+   if(rc != RC::SUCCESS){
+     return {false, rc};
+   }
   }
+  bool not_in = true;
   for (auto tuple : tuples_) {
     if (tuple->cell_num() != 1) {
-      /* todo(yin): err? */
-      return false;
+      return {false, RC::MISMATCH};
     }
     TupleCell cur_cell;
     if (tuple->cell_at(0, cur_cell) != RC::SUCCESS) {
-      /*todo(yin):err? */
-      return false;
+      return {false, RC::MISMATCH};
     }
     if (cur_cell.is_null()) {
-      return true;
+      /* not in,里面如果有null,返回false */
+      return {false, rc};
+    }
+    if(cur_cell.compare(cell)==0){
+      not_in = false;
     }
   }
-  return false;
+  return {not_in, rc};
 }
 
 RC SubSelectExpr::get_value(const Tuple &tuple, TupleCell &cell){
@@ -141,18 +157,30 @@ RC MultiValueExpr::get_value(const Tuple &tuple, TupleCell &cell){
   return rc;
 }
 
-bool MultiValueExpr::in(const TupleCell &cell){
+std::pair<bool,RC> MultiValueExpr::in(const TupleCell &cell){
   for(auto &in_cell:values_){
     if(in_cell.is_null()){
       continue;
     }
     if(in_cell.compare(cell)==0){
-      return true;
+      return {true, RC::SUCCESS};
     }
   }
-  return false;
+  return {false, RC::SUCCESS};
 }
 
+std::pair<bool,RC> MultiValueExpr::not_in(const TupleCell &cell){
+  bool not_in = true;
+  for (auto &in_cell : values_) {
+    if(in_cell.is_null()){
+      continue;
+    }
+    if(in_cell.compare(cell)==0){
+      not_in = false;
+    }
+  }
+  return {not_in,RC::SUCCESS};
+}
 
 RC FunctionExpr::get_value(const Tuple &tuple, TupleCell &result)
 {

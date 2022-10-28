@@ -72,11 +72,11 @@ std::pair<RC,bool> PredicateOperator::do_predicate(Tuple &tuple)
     Expression *right_expr = filter_unit->right();
     CompOp comp = filter_unit->comp();
     if (comp == EXISTS||comp==NOT_EXISTS) {
-      if( (comp ==EXISTS&&right_expr->exist())||(comp==NOT_EXISTS&&!right_expr->exist())){
-          continue;
-      }else{
-        return {rc, false};
+      auto res = right_expr->exist();
+      if ((res.second != RC::SUCCESS) || (!res.first&&comp==EXISTS)||(res.first&&comp==NOT_EXISTS)) {
+        return {res.second, false};
       }
+      continue;
     }
     TupleCell left_cell;
     TupleCell right_cell;
@@ -87,10 +87,20 @@ std::pair<RC,bool> PredicateOperator::do_predicate(Tuple &tuple)
       if(left_cell.is_null()){
         return {rc, false};
       }
-      if((comp==IN&&right_expr->in(left_cell))||(comp==NOT_IN&&!right_expr->has_null()&&!right_expr->in(left_cell))){
+      if(comp == IN){
+        auto res = right_expr->in(left_cell);
+        if(res.second!= RC::SUCCESS||!res.first){
+          return {res.second, false};
+        }
         continue;
       }
-      return {rc, false};
+      if(comp == NOT_IN){
+        auto res = right_expr->not_in(left_cell);
+        if(res.second!= RC::SUCCESS||!res.first){
+          return {res.second, false};
+        }
+        continue;
+      }
     }
     if((rc = right_expr->get_value(tuple, right_cell))!= RC::SUCCESS){
       return {rc, false};

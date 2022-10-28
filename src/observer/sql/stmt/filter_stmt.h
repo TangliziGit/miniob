@@ -84,6 +84,7 @@ public:
 
   FilterStmt() = default;
   virtual ~FilterStmt();
+  FilterStmt(std::set<FilterUnit *> filter_units) : filter_units_(filter_units){};
 
 public:
   const std::set<FilterUnit *> &filter_units() const

@@ -371,6 +371,7 @@ public:
   /* 用栈递归 */
   RC append_table(const char *table_name)override{
     tuples_[table_name].push_back(nullptr);
+    return RC::SUCCESS;
   }
 
   RC set_tuple(const char *table_name,Tuple * tuple)override
@@ -384,7 +385,12 @@ public:
   }
   
   RC close_table(const char *table_name)override{
-    tuples_[table_name].pop_back();
+    auto itr = tuples_.find(table_name);
+    if(itr == tuples_.end()||itr->second.size()==0){
+      return RC::GENERIC_ERROR;
+    }
+    itr->second.pop_back();
+    return RC::SUCCESS;
   }
 
   int cell_num() const override{

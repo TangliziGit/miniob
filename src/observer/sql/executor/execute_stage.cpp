@@ -405,8 +405,7 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
   return oper;
 }
 
-static void find_filter(FilterStmt* filter_stmt,const std::map<std::string,int>&name_idx,FilterStmt* out_filter_stmt){
-  const std::set<FilterUnit *> &filter_units = filter_stmt->filter_units();
+static void find_filter(std::set<FilterUnit *> &filter_units,const std::map<std::string,int>&name_idx,FilterStmt* out_filter_stmt){
   if (filter_units.empty() ) {
     return;
   }
@@ -427,10 +426,9 @@ static void find_filter(FilterStmt* filter_stmt,const std::map<std::string,int>&
       remove_unit.push_back(filter_unit);
     }
   }
-  /* 不remove,因为sub_query可能会继续用 */
-  // for(auto filter_unit:remove_unit){
-  //   filter_stmt->remove_filter(filter_unit);
-  // }
+  for(auto filter_unit:remove_unit){
+    filter_units.erase(filter_unit);
+  }
 }
 
 std::pair<std::vector<Tuple *>, RC> execute_select(Stmt *stmt);
@@ -464,38 +462,26 @@ std::pair<std::vector<Tuple*>, RC> execute_select(Stmt *stmt){
 
   auto tables = select_stmt->tables();
   std::map<std::string, int> name_idx;
-  auto filter = select_stmt->filter_stmt();
-  std::vector<JoinOperator*> join_opers;
+  auto filter_units = select_stmt->filter_stmt()->filter_copy();
+  std::vector<JoinOperator *> join_opers;
   for (size_t i = 0; i < tables.size(); i++) {
     Table *table = tables[i];
     name_idx[tables[i]->name()] = i;
     FilterStmt *cur_filter = new FilterStmt();
-    find_filter(filter, name_idx, cur_filter);
+    find_filter(filter_units, name_idx, cur_filter);
     Operator *oper = try_to_create_index_scan_operator(cur_filter);
     if(oper == nullptr){
       oper = new TableScanOperator(table);
     }
-    join_opers.push_back(new JoinOperator(table, oper, cur_filter));
+    join_opers.push_back(new JoinOperator(table, oper, cur_filter,&base_tuple));
     if (i != 0) {
       join_opers[i]->add_child(join_opers[i - 1]);
     }
-    base_tuple.append_table(table->name());
   }
-  join_opers[0]->init(&base_tuple);
-
-  DEFER([&]() { 
-    for (auto join_oper:join_opers){
-      delete join_oper;
-    }
-    for(auto table:tables){
-      base_tuple.close_table(table->name());
-    }
-  });
 
   Operator *temp_oper = join_opers.back();
-  
-  PredicateOperator pred_oper(select_stmt->filter_stmt());
-  pred_oper.add_child(temp_oper);
+  PredicateOperator *pred_oper = new PredicateOperator(new FilterStmt(filter_units));
+  pred_oper->add_child(temp_oper);
 
   Operator *oper = nullptr;
   if (select_stmt->has_aggregation()) {
@@ -514,11 +500,10 @@ std::pair<std::vector<Tuple*>, RC> execute_select(Stmt *stmt){
     }
     oper = project_oper;
   }
-  oper->add_child(&pred_oper);
+  oper->add_child(pred_oper);
 
   rc = oper->open();
   if (rc != RC::SUCCESS && rc!=RC::RECORD_EOF) {
-    LOG_WARN("failed to open operator");
     return {tuples, rc};
   }
 
@@ -536,9 +521,13 @@ std::pair<std::vector<Tuple*>, RC> execute_select(Stmt *stmt){
   }
 
   if (rc != RC::RECORD_EOF) {
+    tuples.clear();
     oper->close();
   } else {
     rc = oper->close();
+    if(rc != RC::SUCCESS){
+      tuples.clear();
+    }
   }
   return {tuples,rc};
 };
@@ -558,33 +547,22 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   }
   auto tables = select_stmt->tables();
   std::map<std::string, int> name_idx;
-  auto filter = select_stmt->filter_stmt();
-  std::vector<JoinOperator*> join_opers;
+  auto filter_units = select_stmt->filter_stmt()->filter_copy();
+  std::vector<JoinOperator *> join_opers;
   for (size_t i = 0; i < tables.size(); i++) {
     Table *table = tables[i];
     name_idx[tables[i]->name()] = i;
     FilterStmt *cur_filter = new FilterStmt();
-    find_filter(filter, name_idx, cur_filter);
+    find_filter(filter_units, name_idx, cur_filter);
     Operator *oper = try_to_create_index_scan_operator(cur_filter);
     if(oper == nullptr){
       oper = new TableScanOperator(table);
     }
-    join_opers.push_back(new JoinOperator(table, oper, cur_filter));
+    join_opers.push_back(new JoinOperator(table, oper, cur_filter,&base_tuple));
     if (i != 0) {
       join_opers[i]->add_child(join_opers[i - 1]);
     }
-    base_tuple.append_table(table->name());
   }
-  join_opers[0]->init(&base_tuple);
-
-  DEFER([&]() { 
-    for (auto join_oper:join_opers){
-      delete join_oper;
-    }
-    for(auto table:tables){
-      base_tuple.close_table(table->name());
-    }
-  });
 
   Operator *temp_oper = join_opers.back();
   if (select_stmt->order_flag().size()!=0) {
@@ -592,8 +570,8 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     order_oper->add_child(temp_oper);
     temp_oper = order_oper;
   }
-  PredicateOperator pred_oper(select_stmt->filter_stmt());
-  pred_oper.add_child(temp_oper);
+  PredicateOperator *pred_oper = new PredicateOperator(new FilterStmt(filter_units));
+  pred_oper->add_child(temp_oper);
 
   Operator *oper = nullptr;
   if (select_stmt->has_aggregation()) {
@@ -612,7 +590,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     }
     oper = project_oper;
   }
-  oper->add_child(&pred_oper);
+  oper->add_child(pred_oper);
 
   rc = oper->open();
   if (rc != RC::SUCCESS && rc!=RC::RECORD_EOF) {

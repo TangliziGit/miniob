@@ -11,31 +11,30 @@
 class JoinOperator : public PredicateOperator
 {
 public:
-  JoinOperator(Table *table,Operator * oper,FilterStmt * filter_stmt):PredicateOperator(filter_stmt),
-  table_(table),right_oper_(oper)
-  {}
+  JoinOperator(Table *table,Operator * oper,FilterStmt * filter_stmt,Tuple* tuple):PredicateOperator(filter_stmt),
+  table_(table),right_oper_(oper),tuple_(tuple)
+  {
+    tuple_->append_table(table_->name());
+  }
 
   virtual ~JoinOperator() = default;
-  void init(Tuple* tuple){
-      if(is_base_oper()){
-          tuple_ = tuple;
-      }
-  }
   bool is_base_oper(){
     return children_.size() == 0;
   }
   RC open() override{
-    right_oper_->open();
+    RC rc = right_oper_->open();
+    if(rc != RC::SUCCESS){
+      return rc;
+    }
 
     if (!is_base_oper()) {
-      RC rc = RC::SUCCESS;
+      rc = RC::SUCCESS;
       if((rc= children_[0]->open())!=RC::SUCCESS){
         return rc;
       }
       if ((rc = children_[0]->next()) != RC::SUCCESS) {
         return rc;
       }
-      tuple_ = children_[0]->current_tuple();
     }
     return RC::SUCCESS;
   }
@@ -48,7 +47,10 @@ public:
           return rc;
         }
         if (!is_base_oper()){
-          right_oper_->close();
+          rc = right_oper_->close();
+          if(rc!= RC::SUCCESS){
+            return rc;
+          }
           rc = right_oper_->open();
           if (rc != RC::SUCCESS) {
             return rc;
@@ -66,7 +68,10 @@ public:
           return rc;
         }
       }
-      tuple_->set_tuple(table_->name(), right_oper_->current_tuple()->copy());
+      rc = tuple_->set_tuple(table_->name(), right_oper_->current_tuple()->copy());
+      if(rc != RC::SUCCESS){
+        return rc;
+      }
       auto res = do_predicate(*tuple_);
       if (res.first==RC::SUCCESS&&!res.second) {
         continue;
@@ -76,12 +81,18 @@ public:
     return rc;
   }
   RC close() override{
-    right_oper_->close();
+    RC rc = right_oper_->close();
+    if(rc !=RC::SUCCESS){
+      return rc;
+    }
+    rc = tuple_->close_table(table_->name());
+    if(rc != RC::SUCCESS){
+      return rc;
+    }
     if(is_base_oper()){
     }else{
-      children_[0]->close();
+      return children_[0]->close();
     }
-    delete right_oper_;
     return RC::SUCCESS;
   }
   virtual Tuple * current_tuple(){

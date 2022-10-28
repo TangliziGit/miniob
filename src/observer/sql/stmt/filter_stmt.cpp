@@ -22,9 +22,9 @@ See the Mulan PSL v2 for more details. */
 
 FilterStmt::~FilterStmt()
 {
-  for (FilterUnit *unit : filter_units_) {
-    delete unit;
-  }
+  // for (FilterUnit *unit : filter_units_) {
+  //   delete unit;
+  // }
   filter_units_.clear();
 }
 

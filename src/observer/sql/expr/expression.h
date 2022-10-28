@@ -41,14 +41,14 @@ public:
   
   virtual RC get_value(const Tuple &tuple, TupleCell &cell)= 0;
   virtual ExprType type() const = 0;
-  virtual bool exist(){
-    return true;
+  virtual std::pair<bool,RC> exist(){
+    return {false, RC::UNIMPLENMENT};
   }
-  virtual bool in(const TupleCell&cell){
-    return false;
+  virtual std::pair<bool,RC> in(const TupleCell&cell){
+    return {false, RC::UNIMPLENMENT};
   }
-  virtual bool has_null(){
-    return false;
+  virtual std::pair<bool,RC> not_in(const TupleCell&cell){
+    return {false, RC::UNIMPLENMENT};
   }
   virtual RC init(std::function<std::pair<std::vector<Tuple*>,RC>(Stmt *)> init_func){
     return RC::UNIMPLENMENT;
@@ -117,15 +117,16 @@ public:
     return ExprType::VALUE;
   }
 
-  bool in(const TupleCell &cell)override{
+  std::pair<bool,RC> in(const TupleCell &cell)override{
      if(tuple_cell_.is_null()&&cell.is_null()){
-       return false;
+       return {false,RC::SUCCESS};
      }
-     return tuple_cell_.compare(cell) == 0;
+     return {tuple_cell_.compare(cell) == 0, RC::SUCCESS};
   }
 
-  bool has_null()override{
-    return tuple_cell_.is_null();
+  std::pair<bool,RC> not_in(const TupleCell &cell)override{
+
+    return {tuple_cell_.is_null(), RC::SUCCESS};
   }
 
   void get_tuple_cell(TupleCell &cell) const {
@@ -154,12 +155,12 @@ public:
 
   RC get_value(const Tuple &tuple, TupleCell &cell) override;
 
-  bool exist() override;
+  std::pair<bool,RC> exist() override;
   bool need_execute(){
     return ((SelectStmt *)(select_stmt_))->contain_other_field();
   }
-  bool in(const TupleCell &cell) override;
-  bool has_null() override;
+  std::pair<bool,RC> in(const TupleCell &cell) override;
+  std::pair<bool,RC> not_in(const TupleCell &cell) override;
   ExprType type() const override
   {
     return ExprType::SUB_SELECT;
@@ -183,15 +184,8 @@ class MultiValueExpr : public Expression {
   virtual ~MultiValueExpr() = default;
   RC get_value(const Tuple &tuple, TupleCell &cell) override;
 
-  bool in(const TupleCell &cell) override;
-  bool has_null() override{
-    for(auto &cell:values_){
-      if(cell.is_null()){
-        return true;
-      }
-    }
-    return false;
-  }
+  std::pair<bool,RC> in(const TupleCell &cell) override;
+  std::pair<bool,RC> not_in(const TupleCell &cell) override;
   ExprType type() const override
   {
     return ExprType::MULTI_VALUE;
