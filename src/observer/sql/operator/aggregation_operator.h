@@ -115,7 +115,7 @@ public:
       }
 
       AggKey key = result.first;
-      rc = insert(key, tuple);
+      rc = insert(key, tuple->copy());
       if (rc != SUCCESS) {
         return rc;
       }

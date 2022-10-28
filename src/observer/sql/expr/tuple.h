@@ -346,13 +346,13 @@ public:
   }
 
   void destroy() override{
-    for(auto &itr:tuples_){
-      for(auto tuple:itr.second){
-        tuple->destroy();
-        delete tuple;
-      }
-      itr.second.clear();
-    }
+    // for(auto &itr:tuples_){
+    //   for(auto tuple:itr.second){
+    //     tuple->destroy();
+    //     delete tuple;
+    //   }
+    //   itr.second.clear();
+    // }
     tuples_.clear();
   }
 
