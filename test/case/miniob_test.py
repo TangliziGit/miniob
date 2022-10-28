@@ -57,7 +57,7 @@ python3 miniob_test.py \
         --code-type=git \
         --target-dir=./miniob \
         --log=stdout \
-        --compile-make-args=-j4
+        --compile-make-args=-j
 """
 
 

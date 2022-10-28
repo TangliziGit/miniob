@@ -173,7 +173,7 @@ std::pair<bool,RC> MultiValueExpr::not_in(const TupleCell &cell){
   bool not_in = true;
   for (auto &in_cell : values_) {
     if(in_cell.is_null()){
-      continue;
+      return {false, RC::SUCCESS};
     }
     if(in_cell.compare(cell)==0){
       not_in = false;
