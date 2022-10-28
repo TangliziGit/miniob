@@ -96,7 +96,7 @@ std::pair<Expression *, RC> create_function_expr(
     FunctionAttr *func_attr,
     Table *default_table,
     const std::unordered_map<std::string, Table *> &tables) {
-  auto func_field_result = FunctionField::make(default_table, tables, func_attr);
+  auto func_field_result = FunctionField::make(default_table, tables, func_attr, nullptr);
   if (func_field_result.second != RC::SUCCESS) {
     return { nullptr, func_field_result.second };
   }

@@ -133,6 +133,7 @@ void yyerror(yyscan_t scanner, const char *str)
         UNIQUE
         INNER
         JOIN
+        AS
 		ASC
 		ORDER
 		BY
@@ -455,10 +456,14 @@ select:				/*  select 语句的语法解析树*/
 	}
 	;
 join_attr:
-      INNER JOIN ID ON and_condition condition_list{
-	selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
-   } 
-;
+      	INNER JOIN ID ON and_condition condition_list{
+		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3, NULL);
+   	}
+      	| INNER JOIN ID AS ID ON and_condition condition_list{
+		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3, $5);
+   	}
+	;
+
 join_attr_list:%empty
     | join_attr join_attr_list{
    }
@@ -578,25 +583,38 @@ select_attr:
     STAR attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, "*");
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, NULL);
     }
     | ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, $1);
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, NULL);
     }
     | ID DOT ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, $1, $3);
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-		}
-	| ID DOT STAR attr_list{
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, NULL);
+    }
+    | ID DOT STAR attr_list{
 			RelAttr attr;
 			relation_attr_init(&attr, $1, "*");
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-	}
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, NULL);
+    }
     | function attr_list {
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $1);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $1, NULL);
+    }
+    | ID AS ID attr_list {
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, $1);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $3);
+    }
+    | ID DOT ID AS ID attr_list {
+			RelAttr attr;
+			relation_attr_init(&attr, $1, $3);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $5);
+    }
+    | function AS ID attr_list {
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $1, $3);
     }
     ;
 
@@ -656,27 +674,30 @@ attr_list: %empty
     | COMMA ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, $2);
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, NULL);
       }
     | COMMA ID DOT ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, $2, $4);
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, NULL);
   	  }
 	| COMMA ID DOT STAR attr_list{
 			RelAttr attr;
 			relation_attr_init(&attr, $2, "*");
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, NULL);
 	}
     | COMMA function attr_list {
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $2);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $2, NULL);
     }
     ;
 
 rel_id:
     ID{
-		selects_append_relation(&CONTEXT->ssql->sstr.selection, $1);
-	}
+		selects_append_relation(&CONTEXT->ssql->sstr.selection, $1, NULL);
+    }
+    | ID AS ID{
+		selects_append_relation(&CONTEXT->ssql->sstr.selection, $1, $3);
+    }
 ;
 rel_list: %empty 
     /* empty */

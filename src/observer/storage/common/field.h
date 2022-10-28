@@ -34,30 +34,28 @@ class AbstractField {
 public:
   virtual FieldType type() const { return FieldType::NONE; }
   virtual const char *name() const { return "NONE"; }
+  virtual const char *alias() const { return name(); }
   virtual AttrType attr_type() const { return UNDEFINED; }
-  virtual bool is_field() const {
-    return false;
-  }
 };
 
 class Field : public AbstractField {
 public:
   Field() = default;
-  Field(const Table *table, const FieldMeta *field)
-      : table_(table), field_(field) {}
+  Field(const Table *table, const FieldMeta *field, const char *table_alias, const char *field_alias)
+      : table_(table), field_(field), table_alias_(table_alias), field_alias_(field_alias) {}
 
   FieldType type() const override     { return FieldType::FIELD; }
   const char *name() const override   { return field_name(); }
-  AttrType attr_type() const override { return field_->type(); } 
-  bool is_field()const override{
-    return true;
-  }
+  const char *alias() const override  { return field_alias(); }
+  AttrType attr_type() const override { return field_->type(); }
 
 public:
   const Table *table() const              { return table_; }
   const FieldMeta *meta() const           { return field_; }
   const char *table_name() const          { return table_->name(); }
   const char *field_name() const          { return field_->name(); }
+  const char *table_alias() const         { return table_alias_? table_alias_: table_->name(); }
+  const char *field_alias() const         { return field_alias_? field_alias_: field_->name(); }
 
   void set_table(const Table *table)      { this->table_ = table; }
   void set_field(const FieldMeta *field)  { this->field_ = field; }
@@ -65,14 +63,18 @@ public:
 private:
   const Table *table_ = nullptr;
   const FieldMeta *field_ = nullptr;
+  const char *table_alias_ = nullptr;
+  const char *field_alias_ = nullptr;
 };
 
 class ValueField : public AbstractField {
 public:
-  ValueField(Value *value, const char *name): value_(value), name_(name) {}
+  ValueField(Value *value, const char *name, const char *alias)
+      : value_(value), name_(name), alias_(alias) {}
 
-  FieldType type() const override { return FieldType::VALUE_FIELD; }
-  const char *name() const override { return name_; }
+  FieldType type() const override     { return FieldType::VALUE_FIELD; }
+  const char *name() const override   { return name_; }
+  const char *alias() const override  { return alias_? alias_: name(); }
   AttrType attr_type() const override { return value_->type; }
 
   Value *value() const { return value_; }
@@ -80,16 +82,17 @@ public:
 private:
   Value *value_;
   const char *name_;
+  const char *alias_;
 };
 
 class FunctionField : public AbstractField {
 public:
-  FunctionField(std::vector<AbstractField *> fields, const char *name, const char *function_name)
-      : fields_(std::move(fields)), name_(name), function_name_(function_name) {}
+  FunctionField(std::vector<AbstractField *> fields, const char *name, const char *function_name, const char *alias)
+      : fields_(std::move(fields)), name_(name), function_name_(function_name), alias_(alias) {}
 
-  FieldType type() const override { return FieldType::FUNCTION_FIELD; }
-  const char *name() const override { return name_; }
-  // TODO(chunxu): function field attr type will not be used now
+  FieldType type() const override     { return FieldType::FUNCTION_FIELD; }
+  const char *name() const override   { return name_; }
+  const char *alias() const override  { return alias_? alias_: name(); }
   AttrType attr_type() const override { return UNDEFINED; }
 
   const char *function_name() const { return function_name_; }
@@ -99,7 +102,8 @@ public:
   static std::pair<FunctionField *, RC> make(
       Table *default_table,
       std::unordered_map<std::string, Table *> table_map,
-      FunctionAttr *function_attr) {
+      FunctionAttr *function_attr,
+      const char *alias) {
     std::vector<AbstractField*> fields;
     std::stringstream name;
     std::stringstream value_name;
@@ -114,7 +118,7 @@ public:
 
         value_name.clear();
         cell.to_string(value_name);
-        auto field = new ValueField{value, value_name.str().c_str()};
+        auto field = new ValueField{value, value_name.str().c_str(), nullptr};
         fields.push_back(field);
 
         name << field->name();
@@ -129,7 +133,7 @@ public:
           }
 
           auto value = new Value{ INTS, new int(1) };
-          auto field = new ValueField{value, "*"};
+          auto field = new ValueField{value, "*", nullptr};
           fields.push_back(field);
           name << field->name();
           continue;
@@ -153,7 +157,7 @@ public:
           return { nullptr, RC::SCHEMA_FIELD_MISSING };
         }
 
-        auto field = new Field{table, field_meta};
+        auto field = new Field{table, field_meta, nullptr, nullptr};
         fields.push_back(field);
         if(table_map.size()>1){
           /* 多表查询,需要带上表名 */
@@ -169,7 +173,7 @@ public:
     name << ')';
 
     // TODO(chunxu): what if this name duplicates?
-    auto field = new FunctionField{ fields, strdup(name.str().c_str()), function_attr->function_name };
+    auto field = new FunctionField{ fields, strdup(name.str().c_str()), function_attr->function_name, alias };
     return { field, RC::SUCCESS };
   }
 
@@ -177,4 +181,5 @@ private:
   const std::vector<AbstractField *> fields_;
   const char *name_;
   const char *function_name_;
+  const char *alias_;
 };

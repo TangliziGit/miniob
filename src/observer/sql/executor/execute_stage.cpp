@@ -236,15 +236,11 @@ void print_tuple_header(std::ostream &os, const std::vector<AbstractField *> &fi
       os << " | ";
     }
 
-    // TODO(chunxu): how to deal with alias? maybe add operator::get_output_schema function?
-    // if (cell_spec->alias()) {
-    //   os << cell_spec->alias();
-    // }
-    if(is_multi_table&&fields[i]->is_field()){
+    if(is_multi_table && fields[i]->type() == FieldType::FIELD){
       /* 多表查询需要带上表名 */
-      os << reinterpret_cast<Field *>(fields[i])->table_name() << ".";
+      os << dynamic_cast<Field *>(fields[i])->table_alias() << ".";
     }
-    os << fields[i]->name();
+    os << fields[i]->alias();
   }
 
   if (cell_num > 0) {
@@ -579,7 +575,6 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 
   Operator *oper = nullptr;
   if (select_stmt->has_aggregation()) {
-    // TODO(chunxu): add group by and having fields
     oper = new AggregationOperator(
         select_stmt->query_fields(),
         select_stmt->aggregation_fields(),

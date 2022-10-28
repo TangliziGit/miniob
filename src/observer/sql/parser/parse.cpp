@@ -236,13 +236,15 @@ void attr_info_destroy(AttrInfo *attr_info)
 }
 
 void selects_init(Selects *selects, ...);
-void selects_append_attribute(Selects *selects, RelAttr *rel_attr)
+void selects_append_attribute(Selects *selects, RelAttr *rel_attr, const char *alias)
 {
-  selects->attributes[selects->attr_num++] = *rel_attr;
+  selects->attributes[selects->attr_num] = *rel_attr;
+  selects->attribute_aliases[selects->attr_num++] = strdup(alias);
 }
-void selects_append_relation(Selects *selects, const char *relation_name)
+void selects_append_relation(Selects *selects, const char *relation_name, const char *alias)
 {
-  selects->relations[selects->relation_num++] = strdup(relation_name);
+  selects->relations[selects->relation_num] = strdup(relation_name);
+  selects->relation_aliases[selects->relation_num++] = strdup(alias);
 }
 void selects_append_order(Selects *selects, RelAttr rel_attrs[], size_t order_num, OrderFlag flag[]) {
   for (size_t i = 0; i < order_num; i++) {

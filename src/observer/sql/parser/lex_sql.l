@@ -46,6 +46,7 @@ QUOTE            [\'\"]
 [Ee][Xx][Ii][Ss][Tt][Ss]                             RETURN_TOKEN(EXISTS_T);
 [Bb][Yy]                                             RETURN_TOKEN(BY);
 [Aa][Ss][Cc]                                         RETURN_TOKEN(ASC);
+[Aa][Ss]                                             RETURN_TOKEN(AS);
 ";"                                                  RETURN_TOKEN(SEMICOLON);
 {DOT}                                                RETURN_TOKEN(DOT);
 "*"                                                  RETURN_TOKEN(STAR);

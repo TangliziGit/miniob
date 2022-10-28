@@ -28,21 +28,21 @@ SelectStmt::~SelectStmt()
   // }
 }
 
-static void wildcard_fields(Table *table, std::vector<Field *> &field_metas)
+static void wildcard_fields(Table *table, const char *table_alias, std::vector<Field *> &field_metas)
 {
   const TableMeta &table_meta = table->table_meta();
   const int field_num = table_meta.field_num();
   for (int i = table_meta.sys_field_num(); i < field_num; i++) {
-    field_metas.push_back(new Field(table, table_meta.field(i)));
+    field_metas.push_back(new Field(table, table_meta.field(i), table_alias, nullptr));
   }
 }
 
-static void wildcard_fields(Table *table, std::vector<AbstractField *> &field_metas)
+static void wildcard_fields(Table *table, const char *table_alias, std::vector<AbstractField *> &field_metas)
 {
   const TableMeta &table_meta = table->table_meta();
   const int field_num = table_meta.field_num();
   for (int i = table_meta.sys_field_num(); i < field_num; i++) {
-    field_metas.push_back(new Field(table, table_meta.field(i)));
+    field_metas.push_back(new Field(table, table_meta.field(i), table_alias, nullptr));
   }
 }
 
@@ -62,11 +62,13 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
 
   // collect tables in `from` statement
   std::vector<Table *> tables;
+  std::unordered_map<Table *, const char *> table_aliases;
   /* 默认为true,即每次遇到都重新计算一下,后面如果出现超时问题就优化这里 */
   bool contain_other_field = true;
   std::unordered_map<std::string, Table *> table_map;
   for (size_t i = 0; i < select_sql.relation_num; i++) {
     const char *table_name = select_sql.relations[i];
+    const char *alias = select_sql.relation_aliases[i];
     if (nullptr == table_name) {
       LOG_WARN("invalid argument. relation name is null. index=%d", i);
       return RC::INVALID_ARGUMENT;
@@ -79,7 +81,9 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
     }
 
     tables.push_back(table);
+    table_aliases[table] = alias;
     table_map.insert(std::pair<std::string, Table*>(table_name, table));
+    table_map.insert(std::pair<std::string, Table*>(alias, table));
   }
 
   // collect query fields in `select` statement
@@ -90,10 +94,11 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
   std::vector<OrderFlag> order_flag;
   for (int i = select_sql.attr_num - 1; i >= 0; i--) {
     const RelAttr &relation_attr = select_sql.attributes[i];
+    const auto &alias = select_sql.attribute_aliases[i];
 
     // set function field
     if (relation_attr.function != nullptr) {
-      auto result = FunctionField::make(tables[0], table_map, relation_attr.function);
+      auto result = FunctionField::make(tables[0], table_map, relation_attr.function, alias);
       if (result.second != RC::SUCCESS) {
         return result.second;
       }
@@ -110,7 +115,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
     // set wildcard '*' field
     if (common::is_blank(relation_attr.relation_name) && 0 == strcmp(relation_attr.attribute_name, "*")) {
       for (Table *table : tables) {
-        wildcard_fields(table, query_fields);
+        wildcard_fields(table, table_aliases[table], query_fields);
       }
       continue;
     }
@@ -126,7 +131,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
           return RC::SCHEMA_FIELD_MISSING;
         }
         for (Table *table : tables) {
-          wildcard_fields(table, query_fields);
+          wildcard_fields(table, table_aliases[table], query_fields);
         }
       } else {
         auto iter = table_map.find(table_name);
@@ -137,7 +142,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
 
         Table *table = iter->second;
         if (0 == strcmp(field_name, "*")) {
-          wildcard_fields(table, query_fields);
+          wildcard_fields(table, table_aliases[table], query_fields);
         } else {
           const FieldMeta *field_meta = table->table_meta().field(field_name);
           if (nullptr == field_meta) {
@@ -145,7 +150,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
             return RC::SCHEMA_FIELD_MISSING;
           }
 
-        query_fields.push_back(new Field(table, field_meta));
+        query_fields.push_back(new Field(table, field_meta, table_aliases[table], alias));
         }
       }
       continue;
@@ -164,7 +169,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
       return RC::SCHEMA_FIELD_MISSING;
     }
 
-    query_fields.push_back(new Field(table, field_meta));
+    query_fields.push_back(new Field(table, field_meta, table_aliases[table], alias));
   }
 
   LOG_INFO("got %d tables in from stmt and %d fields in query stmt", tables.size(), query_fields.size());
@@ -182,7 +187,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
       return RC::SCHEMA_FIELD_MISSING;
     }
     order_flag.push_back(select_sql.order_flag[i]);
-    order_by_fields.push_back(new Field(table, field_meta));
+    order_by_fields.push_back(new Field(table, field_meta, table_aliases[table], nullptr));
   }
   Table *default_table = nullptr;
   if (tables.size() == 1) {
@@ -218,7 +223,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
           return RC::SCHEMA_FIELD_MISSING;
         }
         for (Table *table : tables) {
-          wildcard_fields(table, group_by_fields);
+          wildcard_fields(table, table_aliases[table], group_by_fields);
         }
       } else {
         auto iter = table_map.find(table_name);
@@ -229,7 +234,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
 
         Table *table = iter->second;
         if (0 == strcmp(field_name, "*")) {
-          wildcard_fields(table, group_by_fields);
+          wildcard_fields(table, table_aliases[table], group_by_fields);
         } else {
           const FieldMeta *field_meta = table->table_meta().field(field_name);
           if (nullptr == field_meta) {
@@ -237,7 +242,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
             return RC::SCHEMA_FIELD_MISSING;
           }
 
-          group_by_fields.push_back(new Field(table, field_meta));
+          group_by_fields.push_back(new Field(table, field_meta, table_aliases[table], nullptr));
         }
       }
       continue;
@@ -256,7 +261,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
       return RC::SCHEMA_FIELD_MISSING;
     }
 
-    group_by_fields.push_back(new Field(table, field_meta));
+    group_by_fields.push_back(new Field(table, field_meta, table_aliases[table], nullptr));
   }
 
   // collect aggregation conditions in having clause
@@ -274,7 +279,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
 
     if (condition.left_is_attr && condition.left_attr.function != nullptr) {
       auto func_attr = condition.left_attr.function;
-      auto result = FunctionField::make(tables[0], table_map, func_attr);
+      auto result = FunctionField::make(tables[0], table_map, func_attr, nullptr);
       if (result.second != RC::SUCCESS) {
         return result.second;
       }
@@ -289,7 +294,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
 
     if (condition.right_is_attr && condition.right_attr.function != nullptr) {
       auto func_attr = condition.right_attr.function;
-      auto result = FunctionField::make(tables[0], table_map, func_attr);
+      auto result = FunctionField::make(tables[0], table_map, func_attr, nullptr);
       if (result.second != RC::SUCCESS) {
         return result.second;
       }
