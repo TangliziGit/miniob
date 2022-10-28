@@ -22,6 +22,7 @@ public:
     return children_.size() == 0;
   }
   RC open() override{
+    filter_clean_ = false;
     RC rc = right_oper_->open();
     if(rc != RC::SUCCESS){
       return rc;
@@ -32,8 +33,11 @@ public:
       if((rc= children_[0]->open())!=RC::SUCCESS){
         return rc;
       }
-      if ((rc = children_[0]->next()) != RC::SUCCESS) {
+      if ((rc = children_[0]->next()) != RC::SUCCESS&&(rc != RC::SSSUCESS)) {
         return rc;
+      }
+      if(rc==RC::SSSUCESS){
+        filter_clean_ = true;
       }
     }
     return RC::SUCCESS;
@@ -42,6 +46,7 @@ public:
     RC rc = RC::SUCCESS;
     while (true) {
       rc = right_oper_->next();
+      reset();
       if (rc != RC::SUCCESS) {
         if (rc != RC::RECORD_EOF) {
           return rc;
@@ -61,10 +66,11 @@ public:
             return rc;
           }
           rc = children_[0]->next();
-          if (rc != RC::SUCCESS) {
+          if (rc != RC::SUCCESS&&rc!=RC::SSSUCESS) {
             return rc;
           }
-        }else{
+          filter_clean_ = rc == RC::SSSUCESS;
+        } else {
           return rc;
         }
       }
@@ -72,11 +78,16 @@ public:
       if(rc != RC::SUCCESS){
         return rc;
       }
-      auto res = do_predicate(*tuple_);
-      if (res.first==RC::SUCCESS&&!res.second) {
-        continue;
+      if (!filter_clean_) {
+        /* 条件还不够,需要做filter */
+        auto res = do_predicate(*tuple_);
+        if (res.first == RC::SUCCESS && !res.second) {
+          continue;
+        }
+        return res.first;
+      }else{
+        return RC::SSSUCESS;
       }
-      return res.first;
     }
     return rc;
   }
@@ -102,6 +113,7 @@ public:
     return OperType::JOIN;
   }
 private:
+  bool filter_clean_;
   Table *table_;
   Operator *right_oper_;
   Tuple *tuple_;

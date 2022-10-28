@@ -275,11 +275,10 @@ void tuple_to_string(std::ostream &os, const Tuple &tuple)
 
 IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
 {
-  const std::set<FilterUnit *> &filter_units = filter_stmt->filter_units();
-  if (filter_units.empty() ) {
+  const std::vector<FilterUnit *> &filter_units = filter_stmt->filter_units();
+  if (filter_units.empty()||filter_stmt->has_or()) {
     return nullptr;
   }
-
   // 在所有过滤条件中，找到字段与值做比较的条件，然后判断字段是否可以使用索引
   // 如果是多列索引，这里的处理需要更复杂。
   // 这里的查找规则是比较简单的，就是尽量找到使用相等比较的索引
@@ -405,7 +404,7 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
   return oper;
 }
 
-static void find_filter(std::set<FilterUnit *> &filter_units,const std::map<std::string,int>&name_idx,FilterStmt* out_filter_stmt){
+static void find_filter(std::vector<FilterUnit *> &filter_units,const std::map<std::string,int>&name_idx,FilterStmt* out_filter_stmt){
   if (filter_units.empty() ) {
     return;
   }
@@ -427,7 +426,12 @@ static void find_filter(std::set<FilterUnit *> &filter_units,const std::map<std:
     }
   }
   for(auto filter_unit:remove_unit){
-    filter_units.erase(filter_unit);
+    for (size_t i = 0; i < filter_units.size(); i++) {
+      if(filter_units[i]==filter_unit){
+        filter_units.erase(filter_units.begin() + i);
+        break;
+      }
+    }
   }
 }
 
@@ -507,7 +511,7 @@ std::pair<std::vector<Tuple*>, RC> execute_select(Stmt *stmt){
     return {tuples, rc};
   }
 
-  while (rc != RC::RECORD_EOF&&(rc = oper->next()) == RC::SUCCESS) {
+  while (rc != RC::RECORD_EOF&&((rc = oper->next()) == RC::SUCCESS|| rc == RC::SSSUCESS)) {
     // get current record
     // write to response
     Tuple * tuple = oper->current_tuple();
@@ -554,7 +558,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     name_idx[tables[i]->name()] = i;
     FilterStmt *cur_filter = new FilterStmt();
     find_filter(filter_units, name_idx, cur_filter);
-    Operator *oper = try_to_create_index_scan_operator(cur_filter);
+    Operator *oper=try_to_create_index_scan_operator(cur_filter);
     if(oper == nullptr){
       oper = new TableScanOperator(table);
     }
@@ -601,7 +605,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 
   std::stringstream ss;
   print_tuple_header(ss, select_stmt->query_fields(), tables.size() > 1);
-  while (rc != RC::RECORD_EOF&&(rc = oper->next()) == RC::SUCCESS) {
+  while (rc != RC::RECORD_EOF&&((rc = oper->next()) == RC::SUCCESS|| rc ==RC::SSSUCESS)) {
     // get current record
     // write to response
     Tuple * tuple = oper->current_tuple();

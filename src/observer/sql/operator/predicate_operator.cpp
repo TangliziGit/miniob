@@ -27,7 +27,11 @@ RC PredicateOperator::open()
 
   return children_[0]->open();
 }
-
+void PredicateOperator::reset(){
+    for (auto filter : filter_stmt_->filter_units()) {
+      filter->reset();
+    }
+}
 RC PredicateOperator::next()
 {
   RC rc = RC::SUCCESS;
@@ -41,9 +45,10 @@ RC PredicateOperator::next()
       break;
     }
     auto res = do_predicate(static_cast<RowTuple &>(*tuple));
-    if(res.first== RC::SUCCESS && !res.second){
+    reset();
+    if (res.first == RC::SUCCESS && !res.second) {
       continue;
-    }else{
+    } else {
       return res.first;
     }
   }
@@ -67,14 +72,22 @@ std::pair<RC,bool> PredicateOperator::do_predicate(Tuple &tuple)
     return {RC::SUCCESS,true};
   }
   RC rc = RC::SUCCESS;
-  for (const FilterUnit *filter_unit : filter_stmt_->filter_units()) {
+  for (FilterUnit *filter_unit : filter_stmt_->filter_units()) {
+    if (!filter_unit->is_cool()) {
+      continue;
+    }
     Expression *left_expr = filter_unit->left();
     Expression *right_expr = filter_unit->right();
     CompOp comp = filter_unit->comp();
     if (comp == EXISTS||comp==NOT_EXISTS) {
       auto res = right_expr->exist();
       if ((res.second != RC::SUCCESS) || (!res.first&&comp==EXISTS)||(res.first&&comp==NOT_EXISTS)) {
-        return {res.second, false};
+        if(res.second !=RC::SUCCESS ||filter_unit->fail()){
+          /* 报错或者没有可以用的filter */
+          return {res.second, false};
+        }
+      }else if(filter_unit->pass()){
+        return {RC::SSSUCESS, true};
       }
       continue;
     }
@@ -87,38 +100,51 @@ std::pair<RC,bool> PredicateOperator::do_predicate(Tuple &tuple)
       if(left_cell.is_null()){
         return {rc, false};
       }
-      if(comp == IN){
-        auto res = right_expr->in(left_cell);
-        if(res.second!= RC::SUCCESS||!res.first){
+      std::pair<bool,RC> res;
+      if (comp == IN) {
+        res = right_expr->in(left_cell);
+        if(res.second!= RC::SUCCESS||((!res.first)&&filter_unit->fail())){
           return {res.second, false};
         }
-        continue;
-      }
-      if(comp == NOT_IN){
-        auto res = right_expr->not_in(left_cell);
-        if(res.second!= RC::SUCCESS||!res.first){
+      }else{
+        res = right_expr->not_in(left_cell);
+        if(res.second!= RC::SUCCESS||((!res.first)&&filter_unit->fail())){
           return {res.second, false};
         }
-        continue;
       }
+      if(res.first&&filter_unit->pass()){
+          /* 这个col下的filter都成功了 */
+          return {RC::SSSUCESS, true};
+      }
+      continue;
     }
     if((rc = right_expr->get_value(tuple, right_cell))!= RC::SUCCESS){
       return {rc, false};
     }
     if(left_cell.attr_type()==NULLS||right_cell.attr_type()==NULLS){
       /* 如果是null,除is的任何比较都是false */
-      if( comp==IS&&left_cell.is(right_cell) ){
-        continue;
+      bool res = left_cell.is(right_cell);
+      if ((comp == IS && res)||(comp==IS_NOT&&!res)) {
+        if(filter_unit->pass()){
+          return {RC::SSSUCESS, true};
+        }
+      }else{
+        if(filter_unit->fail()){
+          return {RC::SUCCESS, false};
+        }
       }
-      if(comp == IS_NOT &&!left_cell.is(right_cell)){
-        continue;
-      }
-      return {rc, false};
+      continue;
     }
     if(comp == LIKE||comp == NOT_LIKE){
       bool is_like = left_cell.like(right_cell);
       if((comp == LIKE && !is_like)||(comp==NOT_LIKE&&is_like)){
-        return {rc, false};
+        if(filter_unit->fail()){
+          return {RC::SUCCESS, false};
+        }
+      }else{
+        if(filter_unit->pass()){
+          return {RC::SSSUCESS, true};
+        }
       }
       continue;
     }
@@ -148,7 +174,13 @@ std::pair<RC,bool> PredicateOperator::do_predicate(Tuple &tuple)
     } break;
     }
     if (!filter_result) {
-      return {rc, false};
+      if(filter_unit->fail()){
+        return {rc, false};
+      }
+    }else{
+      if(filter_unit->pass()){
+        return {RC::SSSUCESS, true};
+      }
     }
   }
   return {rc, true};

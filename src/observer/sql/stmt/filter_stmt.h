@@ -25,20 +25,71 @@ See the Mulan PSL v2 for more details. */
 class Db;
 class Table;
 class FieldMeta;
+
+class FilterTicker{
+public:
+  FilterTicker(const std::vector<int>&filter_col):filter_col_(filter_col){
+    pass_map_.resize(filter_col.size(), false);
+    size_t i = 0;
+    while(i<filter_col_.size()){
+      int num = 1;
+      i++;
+      while (i<filter_col_.size()&&filter_col_[i]==filter_col_[i-1]){
+        i++;
+        num++;
+      }
+      last_filters_.push_back(num);
+    }
+    pass_map_.resize(filter_col.size(), false);
+    is_cold_.resize(last_filters_.size(), -1);
+    last_col_ = is_cold_.size();
+  }
+  void reset(int id){
+    int col = filter_col_[id];
+    if(pass_map_[id]){
+      last_filters_[col]++;
+      pass_map_[id] = false;
+    }
+    /* 如果是因为当前filter导致的这个col冻住 */
+    if(is_cold_[col]==id){
+      last_col_++;
+      is_cold_[col] = -1;
+    }
+  }
+  bool pass(int id){
+    pass_map_[id] = true;
+    int col = filter_col_[id];
+    last_filters_[col]--;
+    if(last_filters_[col]==0){
+      return true;
+    }
+    return false;
+  }
+  bool fail(int id){
+    int col = filter_col_[id];
+    is_cold_[col] = id;
+    last_col_--;
+    return last_col_ == 0;
+  }
+  bool is_cool(int id){
+    int col = filter_col_[id];
+    return is_cold_[col] == -1;
+  }
+  bool has_or(){
+    return last_col_ != 1;
+  }
+
+private:
+ std::vector<bool> pass_map_;
+ std::vector<int> filter_col_;
+ std::vector<int> last_filters_;
+ std::vector<int> is_cold_;
+ int last_col_;
+};
 class FilterUnit {
 public:
   FilterUnit() = default;
-  ~FilterUnit()
-  {
-    // if (left_) {
-    //   delete left_;
-    //   left_ = nullptr;
-    // }
-    // if (right_) {
-    //   delete right_;
-    //   right_ = nullptr;
-    // }
-  }
+  ~FilterUnit(){}
   
   void set_comp(CompOp comp) {
     comp_ = comp;
@@ -64,15 +115,38 @@ public:
   {
     return right_;
   }
-  void set_or_and(bool or_and){
-    or_and_ = or_and;
+
+  void set_ticker(FilterTicker *ticker){
+    ticker_ = ticker;
   }
-  bool get_or_and(){
-    return or_and_;
+  FilterTicker * get_ticker(){
+    return ticker_;
+  }
+  void set_id(int id){
+    id_ = id;
+  }
+  bool get_id(){
+    return id_;
+  }
+  void reset(){
+    ticker_->reset(id_);
+  }
+  bool pass(){
+    return ticker_->pass(id_);
+  }
+  bool fail(){
+    return ticker_->fail(id_);
+  }
+  bool is_cool(){
+    return ticker_->is_cool(id_);
+  }
+  bool has_or(){
+    return ticker_->has_or();
   }
 
-private:
-  bool or_and_;
+private : 
+  FilterTicker *ticker_;
+  int id_;
   CompOp comp_ = NO_OP;
   Expression *left_ = nullptr;
   Expression *right_ = nullptr;
@@ -84,25 +158,30 @@ public:
 
   FilterStmt() = default;
   virtual ~FilterStmt();
-  FilterStmt(std::set<FilterUnit *> filter_units) : filter_units_(filter_units){};
+  FilterStmt(const std::vector<FilterUnit *> &filter_units) : filter_units_(filter_units){};
 
 public:
-  const std::set<FilterUnit *> &filter_units() const
+  const std::vector<FilterUnit *> &filter_units() const
   {
     return filter_units_;
   }
-  std::set<FilterUnit *> filter_copy() const
+  std::vector<FilterUnit *> filter_copy() const
   {
     return filter_units_;
   }
   void add_filter(FilterUnit * filter_unit){
-    filter_units_.insert(filter_unit);
+    filter_units_.push_back(filter_unit);
   }
   void remove_filter(FilterUnit * filter_unit){
-    filter_units_.erase(filter_unit);
+    for (size_t i = 0; i < filter_units_.size();i++){
+      if(filter_unit == filter_units_[i]){
+        filter_units_.erase(filter_units_.begin() + i);
+        break;
+      }
+    }
   }
-  bool is_or(){
-    return is_or_;
+  bool has_or(){
+    return filter_units_.size() != 0 ? filter_units_[0]->has_or() : false;
   }
 
 public:
@@ -114,6 +193,5 @@ public:
 			       const Condition &condition, FilterUnit *&filter_unit);
 
 private:
-  std::set<FilterUnit *>  filter_units_;
-  bool is_or_;
+  std::vector<FilterUnit *>  filter_units_;
 };

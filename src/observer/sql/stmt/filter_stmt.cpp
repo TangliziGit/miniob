@@ -36,6 +36,8 @@ RC FilterStmt::create(Db *db, Table *default_table, std::unordered_map<std::stri
   stmt = nullptr;
 
   FilterStmt *tmp_stmt = new FilterStmt();
+  int cur_id = 0;
+  std::vector<int> filter_col;
   for (int i = 0; i < condition_num; i++) {
     FilterUnit *filter_unit = nullptr;
     rc = create_filter_unit(db, default_table, tables, conditions[i], filter_unit);
@@ -44,7 +46,18 @@ RC FilterStmt::create(Db *db, Table *default_table, std::unordered_map<std::stri
       LOG_WARN("failed to create filter unit. condition index=%d", i);
       return rc;
     }
-    tmp_stmt->filter_units_.insert(filter_unit);
+    if(!conditions[i].is_and){
+      /* or */
+      cur_id++;
+    }
+    filter_col.push_back(cur_id);
+    filter_unit->set_id(i);
+    tmp_stmt->filter_units_.push_back(filter_unit);
+  }
+
+  FilterTicker *ticker = new FilterTicker(filter_col);
+  for (auto filter_unit:tmp_stmt->filter_units_) {
+    filter_unit->set_ticker(ticker);
   }
 
   stmt = tmp_stmt;

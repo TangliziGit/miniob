@@ -31,6 +31,7 @@ public:
 
   virtual ~PredicateOperator() = default;
 
+  void reset();
   RC open() override;
   RC next() override;
   RC close() override;
