@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 
 #include <vector>
 #include <unordered_map>
+#include <iostream>
 #include "rc.h"
 #include "sql/parser/parse_defs.h"
 #include "sql/stmt/stmt.h"
@@ -77,6 +78,29 @@ public:
   }
   bool has_or(){
     return last_col_ != 1;
+  }
+  void print(){
+    std::cout << "pass_map_: ";
+    for (size_t i = 0; i < pass_map_.size();i++){
+      std::cout << pass_map_[i] << " ";
+    }
+    std::cout << "\n";
+    std::cout << "filter_col_: ";
+    for (size_t i = 0; i < filter_col_.size();i++){
+      std::cout << filter_col_[i] << " ";
+    }
+    std::cout << "\n";
+    std::cout << "last_filters: ";
+    for (size_t i = 0; i < last_filters_.size();i++){
+      std::cout << last_filters_[i] << " ";
+    }
+    std::cout << "\n";
+    std::cout << "is_cold_: ";
+    for (size_t i = 0; i < is_cold_.size();i++){
+      std::cout << is_cold_[i] << " ";
+    }
+    std::cout << "\n";
+    std::cout << "last_col: " << last_col_ << "\n";
   }
 
 private:
@@ -142,6 +166,9 @@ public:
   }
   bool has_or(){
     return ticker_->has_or();
+  }
+  void print(){
+    ticker_->print();
   }
 
 private : 

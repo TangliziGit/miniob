@@ -46,7 +46,7 @@ RC FilterStmt::create(Db *db, Table *default_table, std::unordered_map<std::stri
       LOG_WARN("failed to create filter unit. condition index=%d", i);
       return rc;
     }
-    if(!conditions[i].is_and){
+    if(conditions[i].is_or){
       /* or */
       cur_id++;
     }

@@ -705,11 +705,11 @@ condition_list: %empty
     ;
 and_condition:
    condition{
-	CONTEXT->conditions[CONTEXT->condition_length-1].is_and = 1;
+	CONTEXT->conditions[CONTEXT->condition_length-1].is_or = 0;
 }
 or_condition:
    condition{
-     CONTEXT->conditions[CONTEXT->condition_length-1].is_and = 0;
+     CONTEXT->conditions[CONTEXT->condition_length-1].is_or = 1;
 };
 condition:
 	EXISTS_T value{

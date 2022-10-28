@@ -2523,7 +2523,7 @@ yyreduce:
   case 132:
 #line 707 "yacc_sql.y"
             {
-	CONTEXT->conditions[CONTEXT->condition_length-1].is_and = 1;
+	CONTEXT->conditions[CONTEXT->condition_length-1].is_or = 0;
 }
 #line 2529 "yacc_sql.tab.c"
     break;
@@ -2531,7 +2531,7 @@ yyreduce:
   case 133:
 #line 711 "yacc_sql.y"
             {
-     CONTEXT->conditions[CONTEXT->condition_length-1].is_and = 0;
+     CONTEXT->conditions[CONTEXT->condition_length-1].is_or = 1;
 }
 #line 2537 "yacc_sql.tab.c"
     break;
