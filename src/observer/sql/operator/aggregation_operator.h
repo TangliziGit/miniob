@@ -106,7 +106,7 @@ public:
       return rc;
     }
 
-    while ((rc = child->next()) == RC::SUCCESS) {
+    while ((rc = child->next()) == RC::SUCCESS||(rc == RC::SSSUCESS)) {
       Tuple *tuple = child->current_tuple();
 
       auto result = make_key(tuple);

@@ -16,7 +16,7 @@ RC UpdateOperator::open()
   }
 
   Table *table = stmt_->table();
-  while (RC::SUCCESS == (rc = child->next())) {
+  while (RC::SUCCESS == (rc = child->next())||(rc ==RC::SSSUCESS)) {
     Tuple *tuple = child->current_tuple();
     if (nullptr == tuple) {
       LOG_WARN("failed to get current record: %s", strrc(rc));
