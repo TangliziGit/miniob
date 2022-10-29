@@ -22,6 +22,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/common/field_meta.h"
 #include "sql/expr/tuple_cell.h"
 #include "common/lang/string.h"
+#include "util/util.h"
 
 enum class FieldType {
   NONE,
@@ -46,7 +47,7 @@ public:
 
   FieldType type() const override     { return FieldType::FIELD; }
   const char *name() const override   { return field_name(); }
-  const char *alias() const override  { return field_alias(); }
+  const char *alias() const override  { return field_alias_? field_alias(): concat(table_alias(), field_alias()); }
   AttrType attr_type() const override { return field_->type(); }
 
 public:
@@ -56,6 +57,7 @@ public:
   const char *field_name() const          { return field_->name(); }
   const char *table_alias() const         { return table_alias_? table_alias_: table_->name(); }
   const char *field_alias() const         { return field_alias_? field_alias_: field_->name(); }
+  bool has_alias() const                  { return field_alias_ != nullptr; }
 
   void set_table(const Table *table)      { this->table_ = table; }
   void set_field(const FieldMeta *field)  { this->field_ = field; }

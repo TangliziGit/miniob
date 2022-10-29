@@ -50,3 +50,9 @@ float get_float_min(){
 float get_float_max(){
   return std::numeric_limits<float>::max()/2;
 }
+
+char *concat(const char *prefix, const char *suffix) {
+  char *result = strdup(prefix);
+  strcat(result, suffix);
+  return result;
+}

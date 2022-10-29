@@ -32,9 +32,15 @@ INSERT INTO _Select_tables_5 VALUES (2, 12, 'c');
 
 -- sort SELECT * FROM _Select_tables_1 as s1, _Select_tables_2 as s2, _Select_tables_3 as s3;
 -- sort SELECT s1.id, s2.u_name, s3.res FROM _Select_tables_1 as s1, _Select_tables_2 as s2, _Select_tables_3 as s3;
-Select s1.res FROM _Select_tables_1 as s1, _Select_tables_2 as s2, _Select_tables_3 as s3;
+-- sort SELECT s1.id as a, s2.u_name as b, s3.res as c FROM _Select_tables_1 as s1, _Select_tables_2 as s2, _Select_tables_3 as s3;
 -- sort SELECT * FROM _Select_tables_1 as s1, _Select_tables_2 as s2, _Select_tables_3 as s3 WHERE _Select_tables_1.u_name=_Select_tables_2.u_name AND _Select_tables_2.u_name=_Select_tables_3.u_name;
+
+-- sort SELECT * FROM _Select_tables_1 s1, _Select_tables_2 s2, _Select_tables_3 s3;
+-- sort SELECT s1.id, s2.u_name, s3.res FROM _Select_tables_1 s1, _Select_tables_2 s2, _Select_tables_3 s3;
+-- sort SELECT s1.id a, s2.u_name b, s3.res c FROM _Select_tables_1 s1, _Select_tables_2 s2, _Select_tables_3 s3;
+-- sort SELECT * FROM _Select_tables_1 s1, _Select_tables_2 s2, _Select_tables_3 s3 WHERE _Select_tables_1.u_name=_Select_tables_2.u_name AND _Select_tables_2.u_name=_Select_tables_3.u_name;
 
 -- echo 3. join empty table
 CREATE TABLE _Select_tables_6(id int, res int);
 -- sort SELECT s1.id, s6.id from _Select_tables_1 as s1, _Select_tables_6 as s6 where _Select_tables_1.id=_Select_tables_6.id;
+-- sort SELECT s1.id, s6.id from _Select_tables_1 s1, _Select_tables_6 s6 where _Select_tables_1.id=_Select_tables_6.id;
