@@ -83,7 +83,9 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
     tables.push_back(table);
     table_aliases[table] = alias;
     table_map.insert(std::pair<std::string, Table*>(table_name, table));
-    table_map.insert(std::pair<std::string, Table*>(alias, table));
+    if (alias != nullptr) {
+      table_map.insert(std::pair<std::string, Table*>(alias, table));
+    }
   }
 
   // collect query fields in `select` statement
