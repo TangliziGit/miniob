@@ -48,4 +48,4 @@ CREATE TABLE _Select_tables_6(id int, res int);
 -- echo 4. alias failure
 SELECT * FROM _Select_tables_1 t, _Select_tables_2 t;
 SELECT * as alias FROM _Select_tables_1 t;
-select t1.id as num from _Select_tables_1 t1 where id in (select t2.id from _Select_tables_2 t2 where age > t2.id);
+select t1.id as age from _Select_tables_1 t1 where id in (select t2.id from _Select_tables_2 t2 where age > t2.id);
