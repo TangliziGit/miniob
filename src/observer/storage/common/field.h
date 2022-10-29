@@ -47,7 +47,7 @@ public:
 
   FieldType type() const override     { return FieldType::FIELD; }
   const char *name() const override   { return field_name(); }
-  const char *alias() const override  { return field_alias_? field_alias(): concat(table_alias(), field_alias()); }
+  const char *alias() const override  { return field_alias(); }
   AttrType attr_type() const override { return field_->type(); }
 
 public:
