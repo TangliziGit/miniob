@@ -409,7 +409,21 @@ public:
 
   RC find_cell(const Field &field, TupleCell &cell) const override
   {
-    return tuples_.find(field.table_name())->second.back()->find_cell(field, cell);
+    // return tuples_.find(field.table_name())->second.back()->find_cell(field, cell);
+    auto iter = tuples_.find(field.table_name());
+    if (iter == tuples_.end()) {
+      return RC::GENERIC_ERROR;
+    }
+
+    auto tuple = iter->second;
+    if (tuple.size() == 0) {
+      return RC::GENERIC_ERROR;
+    }
+
+    if (tuple.back() == nullptr) {
+      return RC::GENERIC_ERROR;
+    }
+    return tuple.back()->find_cell(field, cell);
   }
   RC cell_spec_at(int index, const TupleCellSpec *&spec) const override
   {
