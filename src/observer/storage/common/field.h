@@ -108,17 +108,16 @@ public:
       const char *alias) {
     std::vector<AbstractField*> fields;
     std::stringstream name;
-    std::stringstream value_name;
 
     name << function_attr->function_name << '(';
     for (size_t i=0; i<function_attr->parameter_num; i++) {
-      const auto &param = function_attr->parameters[i];
+      const auto &param = function_attr->parameters[function_attr->parameter_num - i - 1];
 
       if (param.is_value) {
         auto value = reinterpret_cast<Value *>(param.value);
         TupleCell cell(value->type, (char *) value->data);
 
-        value_name.clear();
+        std::stringstream value_name;
         cell.to_string(value_name);
         auto field = new ValueField{value, value_name.str().c_str(), nullptr};
         fields.push_back(field);

@@ -554,6 +554,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   std::vector<JoinOperator *> join_opers;
   for (size_t i = 0; i < tables.size(); i++) {
     Table *table = tables[i];
+    if (table == nullptr && i == 0) continue;
     name_idx[tables[i]->name()] = i;
     FilterStmt *cur_filter = new FilterStmt();
     find_filter(filter_units, name_idx, cur_filter);
@@ -567,14 +568,22 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     }
   }
 
-  Operator *temp_oper = join_opers.back();
-  if (select_stmt->order_flag().size()!=0) {
-    OrderByOperator *order_oper = new OrderByOperator(select_stmt->order_field(), select_stmt->order_flag());
-    order_oper->add_child(temp_oper);
-    temp_oper = order_oper;
-  }
   PredicateOperator *pred_oper = new PredicateOperator(new FilterStmt(filter_units));
-  pred_oper->add_child(temp_oper);
+  if (!tables.empty()) {
+    Operator *temp_oper = join_opers.back();
+    if (select_stmt->order_flag().size()!=0) {
+      OrderByOperator *order_oper = new OrderByOperator(select_stmt->order_field(), select_stmt->order_flag());
+      order_oper->add_child(temp_oper);
+      temp_oper = order_oper;
+    }
+    pred_oper->add_child(temp_oper);
+  } else {
+    auto project_oper = new ProjectOperator(true);
+    for (const auto *field : select_stmt->query_fields()) {
+      project_oper->add_projection(field);
+    }
+    pred_oper->add_child(project_oper);
+  }
 
   Operator *oper = nullptr;
   if (select_stmt->has_aggregation()) {

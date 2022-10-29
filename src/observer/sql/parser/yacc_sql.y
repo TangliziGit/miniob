@@ -458,7 +458,7 @@ eq_define_list:%empty
    }
 
 select:				/*  select 语句的语法解析树*/
-    	SELECT select_attr FROM rel_id rel_list join_attr_list where group_by having order_by SEMICOLON {
+    	SELECT select_attr from where group_by having order_by SEMICOLON {
 		selects_append_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
 		selects_append_group_by(&CONTEXT->ssql->sstr.selection, CONTEXT->group_by_attrs, CONTEXT->group_by_attr_length);
 		selects_append_having(&CONTEXT->ssql->sstr.selection, CONTEXT->having_conditions, CONTEXT->having_condition_length);
@@ -470,6 +470,10 @@ select:				/*  select 语句的语法解析树*/
 		CONTEXT->value_length = 0;
 	}
 	;
+
+from: %empty
+	| FROM rel_id rel_list join_attr_list {}
+
 join_attr:
       	INNER JOIN ID ON and_condition condition_list{
 		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3, NULL);
@@ -695,8 +699,7 @@ function_attr: %empty
 		parameter_init_attr(&CONTEXT->parameters[CONTEXT->parameter_length++], &attr);
 	}
 	| value function_attr_list {
-		Value *value = &CONTEXT->values[CONTEXT->value_length - 1];
-		parameter_init_value(&CONTEXT->parameters[CONTEXT->parameter_length++], value);
+		parameter_init_value(&CONTEXT->parameters[CONTEXT->parameter_length++], $1);
 	}
 
 function_attr_list: %empty
@@ -716,8 +719,7 @@ function_attr_list: %empty
 		parameter_init_attr(&CONTEXT->parameters[CONTEXT->parameter_length++], &attr);
 	}
 	| COMMA value function_attr_list {
-		Value *value = &CONTEXT->values[CONTEXT->value_length - 1];
-		parameter_init_value(&CONTEXT->parameters[CONTEXT->parameter_length++], value);
+		parameter_init_value(&CONTEXT->parameters[CONTEXT->parameter_length++], $2);
 	}
 
 attr_list: %empty 

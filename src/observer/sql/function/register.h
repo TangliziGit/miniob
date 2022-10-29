@@ -6,6 +6,9 @@
 #include "min.h"
 #include "avg.h"
 #include "sum.h"
+#include "length.h"
+#include "round.h"
+#include "date_format.h"
 
 struct FunctionInfo {
   std::function<Function *()> constructor;
@@ -45,8 +48,11 @@ public:
 
 
 #define Constructor(CLASS) [](){ return new CLASS(); }
-static FunctionRegister count{ "count", Constructor(function::Count), true };
-static FunctionRegister max{ "max", Constructor(function::Max), true };
-static FunctionRegister min{ "min", Constructor(function::Min), true };
-static FunctionRegister avg{ "avg", Constructor(function::Avg), true };
-static FunctionRegister sum{ "sum", Constructor(function::Sum), true };
+static FunctionRegister count     { "count", Constructor(function::Count), true };
+static FunctionRegister max       { "max", Constructor(function::Max), true };
+static FunctionRegister min       { "min", Constructor(function::Min), true };
+static FunctionRegister avg       { "avg", Constructor(function::Avg), true };
+static FunctionRegister sum       { "sum", Constructor(function::Sum), true };
+static FunctionRegister length    { "length", Constructor(function::Length), false };
+static FunctionRegister round_    { "round", Constructor(function::Round), false };
+static FunctionRegister dateformat{ "date_format", Constructor(function::DateFormat), false };

@@ -104,7 +104,8 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
 
     // set function field
     if (relation_attr.function != nullptr) {
-      auto result = FunctionField::make(tables[0], table_map, relation_attr.function, alias);
+      Table *default_table = tables.size() > 0? tables[0]: nullptr;
+      auto result = FunctionField::make(default_table, table_map, relation_attr.function, alias);
       if (result.second != RC::SUCCESS) {
         return result.second;
       }

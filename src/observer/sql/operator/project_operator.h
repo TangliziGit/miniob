@@ -20,10 +20,10 @@ See the Mulan PSL v2 for more details. */
 class ProjectOperator : public Operator
 {
 public:
-  ProjectOperator()
-  {}
+  explicit ProjectOperator(bool withoutChild = false)
+      : withoutChild_(withoutChild) {}
 
-  virtual ~ProjectOperator() = default;
+  ~ProjectOperator() override = default;
 
   RC add_projection(const AbstractField *field);
 
@@ -41,4 +41,6 @@ public:
   Tuple * current_tuple() override;
 private:
   ProjectTuple tuple_;
+  bool finished_ = false;
+  const bool withoutChild_ = false;
 };

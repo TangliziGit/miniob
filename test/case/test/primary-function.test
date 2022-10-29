@@ -1,0 +1,15 @@
+create table function(t text, c char, d date, f float);
+
+insert into function values ('this is a text', 'this is chars', '2020-02-10', 123.222);
+
+-- echo 1. length
+select length('this is a string');
+select length(t) from function where length(t)>5;
+select length(c) from function where length(c)>2;
+
+-- echo 2. round
+select round(235.415);
+select round(f, 2) from function;
+
+-- echo 3. length
+select date_format(u_date,'%Y-%y-%M-%m-%D-%d') from function;

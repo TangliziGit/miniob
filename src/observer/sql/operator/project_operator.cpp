@@ -20,6 +20,8 @@ See the Mulan PSL v2 for more details. */
 
 RC ProjectOperator::open()
 {
+  if (withoutChild_) return RC::SUCCESS;
+
   if (children_.size() != 1) {
     LOG_WARN("project operator must has 1 child");
     return RC::INTERNAL;
@@ -37,17 +39,26 @@ RC ProjectOperator::open()
 
 RC ProjectOperator::next()
 {
+  if (withoutChild_) {
+    if (finished_) return RC::RECORD_EOF;
+    finished_ = true;
+    return RC::SUCCESS;
+  }
+
   return children_[0]->next();
 }
 
 RC ProjectOperator::close()
 {
+  if (withoutChild_) return RC::SUCCESS;
+
   children_[0]->close();
   return RC::SUCCESS;
 }
 Tuple *ProjectOperator::current_tuple()
 {
-  tuple_.set_tuple(children_[0]->current_tuple());
+  if (!withoutChild_)
+    tuple_.set_tuple(children_[0]->current_tuple());
   return &tuple_;
 }
 
@@ -90,6 +101,7 @@ RC ProjectOperator::add_projection(const AbstractField *abstract_field)
       auto *spec = new TupleCellSpec(new FunctionExpr(field->fields(), result.first));
       spec->set_alias(field->name());
       tuple_.add_cell_spec(spec);
+      std::cout << tuple_.cell_num() << std::endl;
       break;
     }
     default:
