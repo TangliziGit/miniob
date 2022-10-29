@@ -675,19 +675,32 @@ attr_list: %empty
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, $2);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, NULL);
-      }
+    }
     | COMMA ID DOT ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, $2, $4);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, NULL);
-  	  }
-	| COMMA ID DOT STAR attr_list{
+    }
+    | COMMA ID DOT STAR attr_list{
 			RelAttr attr;
 			relation_attr_init(&attr, $2, "*");
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, NULL);
-	}
+    }
     | COMMA function attr_list {
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $2, NULL);
+    }
+    | COMMA ID AS ID attr_list {
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, $2);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $4);
+    }
+    | COMMA ID DOT ID AS ID attr_list {
+			RelAttr attr;
+			relation_attr_init(&attr, $2, $4);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $6);
+    }
+    | COMMA function AS ID attr_list {
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $2, $4);
     }
     ;
 
