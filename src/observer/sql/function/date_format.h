@@ -63,14 +63,14 @@ protected:
     int day = date % 100;
 
     char Y[10];
-    const char *M = months[month];
-    const char *D = days[day];
+    const char *M = months[month - 1];
+    const char *D = days[day - 1];
     char y[10];
     char m[10];
     char d[10];
 
     sprintf(Y, "%04d", year);
-    sprintf(y, "%02d", year);
+    sprintf(y, "%02d", year % 100);
     sprintf(m, "%02d", month);
     sprintf(d, "%02d", day);
 

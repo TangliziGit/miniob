@@ -119,7 +119,7 @@ public:
 
         std::stringstream value_name;
         cell.to_string(value_name);
-        auto field = new ValueField{value, value_name.str().c_str(), nullptr};
+        auto field = new ValueField{value, strdup(value_name.str().c_str()), nullptr};
         fields.push_back(field);
 
         name << field->name();

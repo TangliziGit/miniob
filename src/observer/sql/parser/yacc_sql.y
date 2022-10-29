@@ -954,6 +954,20 @@ condition:
 		condition_init(&condition, CONTEXT->comp, 0, NULL, &left_value, 0, NULL, &right_value);
 		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 	}
+    | function comOp value {
+		Value *right_value = $3;
+
+		Condition condition;
+		condition_init(&condition, CONTEXT->comp, 1, $1, NULL, 0, NULL, right_value);
+		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+    }
+    | value comOp function {
+	Value *left_value = $1;
+
+	Condition condition;
+	condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 1, $3, NULL);
+	CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+    }
     ;
 
 expression:

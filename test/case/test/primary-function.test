@@ -12,4 +12,4 @@ select round(235.415);
 select round(f, 2) from function;
 
 -- echo 3. length
-select date_format(u_date,'%Y-%y-%M-%m-%D-%d') from function;
+select date_format(d,'%Y-%y-%M-%m-%D-%d') from function;

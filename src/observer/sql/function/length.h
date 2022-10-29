@@ -12,7 +12,7 @@ public:
 protected:
   RC validate_fields(const ArgumentFields &fields) override {
     if (fields.size() != 1) return RC::INVALID_ARGUMENT;
-    if (fields[0]->attr_type() != CHARS) return RC::INVALID_ARGUMENT;
+    if (fields[0]->attr_type() != CHARS && fields[0]->attr_type() != TEXTS) return RC::INVALID_ARGUMENT;
     return RC::SUCCESS;
   }
 
