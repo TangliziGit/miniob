@@ -137,7 +137,7 @@ public:
 
       // if having clause not passed then continue next
       auto res = predicate_oper_.do_predicate(*tuple_);
-      if(res.first!= RC::SUCCESS){
+      if(res.first!= RC::SUCCESS&&res.first!=RC::SSSUCESS){
         return res.first;
       }
       if (res.second) {

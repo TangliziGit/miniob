@@ -433,7 +433,7 @@ void create_index_destroy(CreateIndex *create_index)
 {
   free(create_index->index_name);
   free(create_index->relation_name);
-  for (int i = 0; i < create_index->attribute_count;i++){
+  for (size_t i = 0; i < create_index->attribute_count;i++){
      free(create_index->attribute_name[i]);
   }
 

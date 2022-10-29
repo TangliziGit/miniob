@@ -1,25 +1,14 @@
 -- echo initialization
-CREATE TABLE ssq_1(id int, col1 int nullable, feat1 float);
-CREATE TABLE ssq_2(id int, col2 char nullable, feat2 float);
-CREATE INDEX idx_1 ON ssq_1(col1);
+CREATE TABLE ssq_1(id int, col1 int, feat1 float);
+CREATE TABLE ssq_2(id int, col2 int, feat2 float);
+CREATE TABLE ssq_3(id int, col3 int, feat3 float);
 
 INSERT INTO ssq_1 VALUES (1, 4, 11.2);
-INSERT INTO ssq_1 VALUES (2, null, 12.0);
+INSERT INTO ssq_1 VALUES (2, 2, 12.0);
 INSERT INTO ssq_1 VALUES (3, 3, 13.5);
 INSERT INTO ssq_2 VALUES (1, 2, 13.0);
 INSERT INTO ssq_2 VALUES (2, 7, 10.5);
 INSERT INTO ssq_2 VALUES (5, 3, 12.6);
-INSERT INTO ssq_2 VALUES (5, null, 12.6);
-INSERT INTO ssq_2 VALUES (5, null, 12.6);
-INSERT INTO ssq_2 VALUES (5, null, 12.6);
-INSERT INTO ssq_2 VALUES (5, null, 12.6);
-INSERT INTO ssq_2 VALUES (5, null, 12.6);
-INSERT INTO ssq_2 VALUES (5, null, 12.6);
-INSERT INTO ssq_2 VALUES (5, null, 12.6);
-INSERT INTO ssq_2 VALUES (5, null, 12.6);
-INSERT INTO ssq_2 VALUES (5, null, 12.6);
-INSERT INTO ssq_2 VALUES (5, null, 12.6);
-INSERT INTO ssq_2 VALUES (5, null, 12.6);
 
 -- echo 1. Select
 -- sort select * from ssq_1 where id in (select ssq_2.id from ssq_2);
