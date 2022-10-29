@@ -26,11 +26,13 @@ public:
   TupleCell() = default;
   
   TupleCell(FieldMeta *meta, char *data)
-    : TupleCell(meta->type(), data)
-  {}
+    : TupleCell(meta->type(), data) {}
   TupleCell(AttrType attr_type, char *data)
-    : attr_type_(attr_type), data_(data)
-  {}
+    : attr_type_(attr_type), data_(data) {
+    if (attr_type_ == CHARS || attr_type_ == TEXTS) {
+      length_ = strlen(data);
+    }
+  }
 
   explicit TupleCell(int number)
       : attr_type_(INTS), data_((char *)new int{number}) {}
