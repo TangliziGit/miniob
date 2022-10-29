@@ -44,3 +44,8 @@ INSERT INTO _Select_tables_5 VALUES (2, 12, 'c');
 CREATE TABLE _Select_tables_6(id int, res int);
 -- sort SELECT s1.id, s6.id from _Select_tables_1 as s1, _Select_tables_6 as s6 where _Select_tables_1.id=_Select_tables_6.id;
 -- sort SELECT s1.id, s6.id from _Select_tables_1 s1, _Select_tables_6 s6 where _Select_tables_1.id=_Select_tables_6.id;
+
+-- echo 4. alias failure
+SELECT * FROM _Select_tables_1 t, _Select_tables_2 t;
+SELECT * as alias FROM _Select_tables_1 t;
+select t1.id as num from _Select_tables_1 t1 where id in (select t2.id from _Select_tables_2 t2 where age > t2.id);

@@ -632,6 +632,26 @@ select_attr:
     | function ID attr_list {
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $1, $2);
     }
+    | STAR AS ID attr_list {
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, "*");
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $3);
+    }
+    | STAR ID attr_list {
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, "*");
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $2);
+    }
+    | ID DOT STAR ID attr_list{
+			RelAttr attr;
+			relation_attr_init(&attr, $1, "*");
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $4);
+    }
+    | ID DOT STAR AS ID attr_list{
+			RelAttr attr;
+			relation_attr_init(&attr, $1, "*");
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $5);
+    }
     ;
 
 function:
