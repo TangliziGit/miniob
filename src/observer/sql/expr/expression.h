@@ -31,6 +31,7 @@ enum class ExprType {
   ALIAS,
   SUB_SELECT,
   MULTI_VALUE,
+  MATH,
 };
 
 class Expression
@@ -149,9 +150,23 @@ private:
   TupleCell tuple_cell_;
 };
 
+class MathExpr : public Expression {
+  public: 
+  MathExpr() = default;
+  virtual ~MathExpr() = default;
+  explicit MathExpr(const std::vector<Expression*>&sub_exprs,const std::vector<OP> &ops):sub_exprs_(sub_exprs),ops_(ops){}
 
-class SubSelectExpr : public Expression
-{
+  virtual RC get_value(const Tuple &tuple, TupleCell &cell);
+  virtual ExprType type() const
+  {
+    return ExprType::MATH;
+  }
+
+private:
+  std::vector<Expression *> sub_exprs_;
+  std::vector<OP> ops_;
+};
+class SubSelectExpr : public Expression {
 public:
   SubSelectExpr() = default;
   explicit SubSelectExpr(Stmt *select_stmt) : select_stmt_(select_stmt) {}

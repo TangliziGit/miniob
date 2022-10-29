@@ -82,6 +82,12 @@ typedef enum {
 } CompOp;
 
 typedef enum {
+  ADD,
+  SUB,
+  DIV,
+  MUL,
+} OP;
+typedef enum {
   NO_ORDER,
   ASC_T,
   DESC_T,
@@ -92,7 +98,18 @@ typedef struct _Value {
   AttrType type;  // type of value
   void *data;     // value
   int is_query;
+  int is_expr;
 } Value;
+
+typedef struct _Expr{
+  Value value;
+  RelAttr attr;
+  int is_attr;
+  int expr_num;
+  struct _Expr *expr[MAX_NUM];
+  OP op[MAX_NUM];
+}Expr;
+
 typedef struct _Condition {
   int is_or;
   int left_is_attr;    // TRUE if left-hand side is an attribute
@@ -257,9 +274,11 @@ void relation_attr_destroy(RelAttr *relation_attr);
 void value_init_integer(Value *value, int v);
 void value_init_float(Value *value, float v);
 void value_init_string(Value *value, const char *v);
-int value_init_date(Value *value, const char *v);
+int  value_init_date(Value *value, const char *v);
 void value_init_select(Value *value, Query *sub_query);
 void value_init_null(Value *value);
+void value_init_expression(Value *value, Expr *expr);
+
 void value_destroy(Value *value);
 
 void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr *left_attr, Value *left_value,
@@ -271,6 +290,10 @@ void condition_destroy(Condition *condition);
 void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length,int nullable);
 void attr_info_init_no_length(AttrInfo *attr_info, const char *name, AttrType type,int nullable);
 void attr_info_destroy(AttrInfo *attr_info);
+
+void append_expression(Expr *left_expr, OP op, Expr *right_expr);
+
+void init_expression(Expr *expr, int is_attr, RelAttr *attr, Value *value);
 
 void selects_init(Selects *selects, ...);
 void selects_append_attribute(Selects *selects, RelAttr *rel_attr, const char *alias);

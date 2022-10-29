@@ -140,16 +140,26 @@ void value_init_null(Value* value) {
   value->type = NULLS;
 }
 
+void value_init_expression(Value* value,Expr*expr) {
+  value->is_expr = 1;
+  value->data = malloc(sizeof(Expr));
+  memcpy(value->data, expr, sizeof(Expr));
+}
+
 void value_destroy(Value *value)
 {
   value->type = UNDEFINED;
   if(value->data!=nullptr){
     if(value->is_query){
       query_destroy((Query *)value->data);
-    } else
+    } else if(value->is_expr){
       free(value->data);
+      /* todo(yin) free the left expr */
+      // expr_destroy(value->data)
+    }else free(value->data);
   }
   value->is_query = 0;
+  value->is_expr = 0;
   value->data = nullptr;
 }
 
@@ -233,6 +243,22 @@ void attr_info_destroy(AttrInfo *attr_info)
 {
   free(attr_info->name);
   attr_info->name = nullptr;
+}
+
+void append_expression(Expr*left_expr,OP op,Expr*right_expr){
+  left_expr->op[left_expr->expr_num] = op;
+  Expr *expr = (Expr*)malloc(sizeof(Expr));
+  memcpy(expr, right_expr, sizeof(Expr));
+  left_expr->expr[left_expr->expr_num++] = expr;
+}
+
+void init_expression(Expr*expr,int is_attr,RelAttr*attr,Value *value){
+  expr->is_attr = is_attr;
+  if(expr->is_attr){
+    expr->attr = *attr;
+  }else{
+    expr->value = *value;
+  }
 }
 
 void selects_init(Selects *selects, ...);

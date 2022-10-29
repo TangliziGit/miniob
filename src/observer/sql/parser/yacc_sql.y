@@ -31,11 +31,14 @@ typedef struct ParserContext {
   Value insert_values[MAX_NUM][MAX_NUM];
   Condition conditions[MAX_NUM];
   CompOp comp;
+  OP op;
   size_t order_attr_size;
   RelAttr order_attrs[MAX_NUM];
   OrderFlag order_flag[MAX_NUM];
   size_t id_num;
   char id[MAX_NUM][MAX_NUM];
+  size_t expr_num;
+  Expr expr[MAX_NUM];
 } ParserContext;
 
 //获取子串
@@ -67,6 +70,7 @@ void yyerror(yyscan_t scanner, const char *str)
       context->value_length = 0;
       memset(context->insert_value_length,0,sizeof(context->insert_value_length));
       context->insert_num=0;
+	  context->expr_num=0;
       context->id_num=0;
 	  parser_id--;
   }
@@ -142,16 +146,24 @@ void yyerror(yyscan_t scanner, const char *str)
 		EXISTS_T
 		IN_T
 		OR
+		ADD_T
+		SUB_T
+		DIV_T
+
 %union {
   struct _Attr *attr;
   struct _Condition *condition1;
   struct _Value *value1;
   struct Function *function1;
+  struct _Expr* expr1;
   char *string;
   int number;
   float floats;
   char *position;
 }
+
+%left ADD_T SUB_T
+%left STAR DIV_T
 
 %token <number> NUMBER
 %token <floats> FLOAT
@@ -169,6 +181,7 @@ void yyerror(yyscan_t scanner, const char *str)
 %type <number> number;
 %type <function1> function;
 %type <number> nullable
+%type <expr1> expression
 
 %%
 
@@ -256,11 +269,13 @@ create_index:		/*create index 语句的语法解析树*/
 		{
 			CONTEXT->ssql->flag = SCF_CREATE_INDEX;//"create_index";
 			create_index_init(&CONTEXT->ssql->sstr.create_index, $3, $5, CONTEXT->id_num,CONTEXT->id,0);
+			CONTEXT->id_num=0;
 		}
 	| CREATE UNIQUE INDEX ID ON ID LBRACE ID_get id_list RBRACE SEMICOLON
 	    {
 			CONTEXT->ssql->flag = SCF_CREATE_INDEX;//"create_index";
 			create_index_init(&CONTEXT->ssql->sstr.create_index, $4, $6, CONTEXT->id_num,CONTEXT->id,1);
+			CONTEXT->id_num=0;
 		}
     ;
 
@@ -851,7 +866,61 @@ condition:
 			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
     }
+	| expression comOp expression{
+		Value left_value;
+		value_init_expression(&left_value,$1);
+		Value right_value;
+		value_init_expression(&right_value,$3);
+		Condition condition;
+		condition_init(&condition, CONTEXT->comp, 0, NULL, &left_value, 0, NULL, &right_value);
+		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+	}
     ;
+
+expression:
+	 value {
+		init_expression(&CONTEXT->expr[CONTEXT->expr_num++],0,NULL,$1);
+		$$=&CONTEXT->expr[CONTEXT->expr_num-1];
+	 }
+	 |ID DOT ID{
+		RelAttr attr;
+		relation_attr_init(&attr,$1,$3);
+		init_expression(&CONTEXT->expr[CONTEXT->expr_num++],1,&attr,NULL);
+		$$=&CONTEXT->expr[CONTEXT->expr_num-1];
+	 }
+	 | ID {
+		RelAttr attr;
+		relation_attr_init(&attr,NULL,$1);
+		init_expression(&CONTEXT->expr[CONTEXT->expr_num++],1,&attr,NULL);
+		$$=&CONTEXT->expr[CONTEXT->expr_num-1];
+	 }
+	 | LBRACE expression RBRACE{
+		$$=$2;
+	 }
+	 | expression STAR expression{
+        Expr* left_expr = $1;
+		Expr* right_expr = $3;
+		append_expression(left_expr,MUL,right_expr);
+		$$=left_expr;
+	 }
+	 | expression DIV_T expression{
+        Expr* left_expr = $1;
+		Expr* right_expr = $3;
+		append_expression(left_expr,DIV,right_expr);
+		$$=left_expr;
+	 }
+	 | expression ADD_T expression{
+        Expr* left_expr = $1;
+		Expr* right_expr = $3;
+		append_expression(left_expr,ADD,right_expr);
+		$$=left_expr;
+	 }
+	 | expression SUB_T expression{
+        Expr* left_expr = $1;
+		Expr* right_expr = $3;
+		append_expression(left_expr,SUB,right_expr);
+		$$=left_expr;
+	 }
 
 comOp:
   	  EQ { CONTEXT->comp = EQUAL_TO; }

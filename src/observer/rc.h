@@ -190,6 +190,7 @@ enum RC {
 
   SUCCESS = 0, /* Successful result */
   SSSUCESS,
+  CALCULATE_FAIL,
   DATE_ILLEGAL, /* date parse err */
   /* beginning-of-error-codes */
   GENERIC_ERROR,    /* Generic error */
@@ -217,6 +218,7 @@ enum RC {
   TOOBIG,           /* String or BLOB exceeds size limit */
   CONSTRAINT,       /* Abort due to constraint violation */
   MISMATCH,         /* Data type mismatch */
+  DIVZERO,         /* Data type mismatch */
   MISUSE,           /* Library used incorrectly */
   NOLFS,            /* Uses OS features not supported on host */
   AUTH,             /* Authorization denied */

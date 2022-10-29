@@ -51,6 +51,8 @@ public:
 
   TupleCell cast_to(const TupleCell &target) const;
   std::pair<TupleCell, RC> add(const TupleCell &rhs) const;
+  std::pair<TupleCell, RC> sub(const TupleCell &rhs) const;
+  std::pair<TupleCell, RC> mul(const TupleCell &rhs) const;
   std::pair<TupleCell, RC> div(const TupleCell &rhs) const;
   std::pair<TupleCell, RC> min(const TupleCell &rhs) const;
   std::pair<TupleCell, RC> max(const TupleCell &rhs) const;

@@ -167,6 +167,56 @@ std::pair<TupleCell, RC> TupleCell::add(const TupleCell &other) const {
   return { lhs, UNIMPLENMENT };
 }
 
+std::pair<TupleCell, RC> TupleCell::sub(const TupleCell &other) const {
+  auto lhs = this->cast_to(other);
+  auto rhs = other.cast_to(*this);
+  if (lhs.attr_type_ != rhs.attr_type_) {
+    return { *this, MISMATCH };
+  }
+
+  switch (lhs.attr_type_) {
+    case INTS: {
+      int value = *(int *)lhs.data_ - *(int *)rhs.data_;
+      memcpy(lhs.data_, &value, sizeof(value));
+      return { lhs, SUCCESS };
+    }
+    case FLOATS: {
+      float value = *(float *)lhs.data_ - *(float *)rhs.data_;
+      memcpy(lhs.data_, &value, sizeof(value));
+      return { lhs, SUCCESS };
+    }
+    default:
+      LOG_WARN("not supported");
+  }
+
+  return { lhs, UNIMPLENMENT };
+}
+
+std::pair<TupleCell, RC> TupleCell::mul(const TupleCell &other) const {
+  auto lhs = this->cast_to(other);
+  auto rhs = other.cast_to(*this);
+  if (lhs.attr_type_ != rhs.attr_type_) {
+    return { *this, MISMATCH };
+  }
+
+  switch (lhs.attr_type_) {
+    case INTS: {
+      int value = *(int *)lhs.data_ * *(int *)rhs.data_;
+      memcpy(lhs.data_, &value, sizeof(value));
+      return { lhs, SUCCESS };
+    }
+    case FLOATS: {
+      float value = *(float *)lhs.data_ * *(float *)rhs.data_;
+      memcpy(lhs.data_, &value, sizeof(value));
+      return { lhs, SUCCESS };
+    }
+    default:
+      LOG_WARN("not supported");
+  }
+
+  return { lhs, UNIMPLENMENT };
+}
+
 std::pair<TupleCell, RC> TupleCell::div(const TupleCell &other) const {
   auto lhs = this->cast_to(other);
   auto rhs = other.cast_to(*this);
@@ -176,11 +226,17 @@ std::pair<TupleCell, RC> TupleCell::div(const TupleCell &other) const {
 
   switch (lhs.attr_type_) {
     case INTS: {
+      if((*(int *)rhs.data_)==0){
+        return {*this, DIVZERO};
+      }
       int value = *(int *)lhs.data_ / *(int *)rhs.data_;
       memcpy(lhs.data_, &value, sizeof(value));
       return { lhs, SUCCESS };
     }
     case FLOATS: {
+      if((*(float *)rhs.data_)==0){
+        return {*this, DIVZERO};
+      }
       float value = *(float *)lhs.data_ / *(float *)rhs.data_;
       memcpy(lhs.data_, &value, sizeof(value));
       return { lhs, SUCCESS };

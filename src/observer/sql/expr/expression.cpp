@@ -25,6 +25,80 @@ RC ValueExpr::get_value(const Tuple &tuple, TupleCell & cell)
   cell = tuple_cell_;
   return RC::SUCCESS;
 }
+
+
+RC MathExpr::get_value(const Tuple &tuple, TupleCell &cell){
+  TupleCell left_cell;
+  RC rc = sub_exprs_[0]->get_value(tuple, left_cell);
+  if(rc != RC::SUCCESS){
+    return rc;
+  }
+  /* 用新的data来计算并返回 */;
+  char *data = (char *)malloc(sizeof(int));
+  memcpy(data, left_cell.data(), sizeof(int));
+  left_cell.set_data(data);
+  if (left_cell.is_null()) {
+    cell = left_cell;
+    return RC::SUCCESS;
+  }
+  for (size_t i = 1; i < sub_exprs_.size();i++){
+    TupleCell right_cell;
+    RC rc = sub_exprs_[i]->get_value(tuple, right_cell);
+    if (rc != RC::SUCCESS) {
+      return rc;
+    }
+    if(right_cell.is_null()){
+      cell = left_cell;
+      return RC::SUCCESS;
+    }
+    switch (ops_[i-1])
+    {
+    case ADD:{
+      auto res = left_cell.add(right_cell);
+      if(res.second!= RC::SUCCESS){
+        /* 运算出现异常,返回null */
+        cell.set_type(NULLS);
+        return RC::SUCCESS;
+      }
+      left_cell = res.first;
+    } break;
+    case SUB: {
+      auto res = left_cell.sub(right_cell);
+      if(res.second!= RC::SUCCESS){
+        /* 运算出现异常,返回null */
+        cell.set_type(NULLS);
+        return RC::SUCCESS;
+      }
+      left_cell = res.first;
+    } break;
+    case MUL: {
+      auto res = left_cell.mul(right_cell);
+      if(res.second!= RC::SUCCESS){
+        /* 运算出现异常,返回null */
+        cell.set_type(NULLS);
+        return RC::SUCCESS;
+      }
+      left_cell = res.first;
+    } break;
+    case DIV: {
+      auto res = left_cell.div(right_cell);
+      if(res.second!= RC::SUCCESS){
+        /* 运算出现异常,返回null */
+        cell.set_type(NULLS);
+        return RC::SUCCESS;
+      }
+      left_cell = res.first;
+    } break;
+    default:
+      return RC::UNIMPLENMENT;
+      break;
+    }
+  }
+  cell = left_cell;
+  return rc;
+}
+
+
 std::pair<bool,RC> SubSelectExpr::exist(){
   RC rc = RC::SUCCESS;
   if (need_execute()) {
