@@ -56,11 +56,40 @@ typedef struct {
   Parameter parameters[MAX_NUM];
 } FunctionAttr;
 
+typedef enum {
+  ADD=0,
+  SUB,
+  MUL,
+  DIV,
+} OP;
+
+typedef struct _Expr{
+  struct Attr{
+  char *relation_name;   // relation name (may be NULL) 表名
+  char *attribute_name;  // attribute name              属性名
+  FunctionAttr *function;
+  };
+  
+  struct Val {
+    AttrType type;
+    void *data;
+  };
+
+  char name[40];
+  struct Val *value;
+  struct Attr* attr;
+  int is_attr;
+  int expr_num;
+  struct _Expr *expr[MAX_NUM];
+  OP op[MAX_NUM];
+}Expr;
+
 //属性结构体
 typedef struct {
   char *relation_name;   // relation name (may be NULL) 表名
   char *attribute_name;  // attribute name              属性名
   FunctionAttr *function;
+  Expr *expr;
 } RelAttr;
 
 typedef enum {
@@ -81,12 +110,7 @@ typedef enum {
   NO_OP,
 } CompOp;
 
-typedef enum {
-  ADD,
-  SUB,
-  DIV,
-  MUL,
-} OP;
+
 typedef enum {
   NO_ORDER,
   ASC_T,
@@ -98,17 +122,10 @@ typedef struct _Value {
   AttrType type;  // type of value
   void *data;     // value
   int is_query;
-  int is_expr;
+  /* todo(yin)如果需要考察整数参与结果的expresion就加上 */
+  // char *name;
 } Value;
 
-typedef struct _Expr{
-  Value value;
-  RelAttr attr;
-  int is_attr;
-  int expr_num;
-  struct _Expr *expr[MAX_NUM];
-  OP op[MAX_NUM];
-}Expr;
 
 typedef struct _Condition {
   int is_or;
@@ -271,13 +288,14 @@ void function_destroy(FunctionAttr *function);
 void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const char *attribute_name);
 void relation_attr_destroy(RelAttr *relation_attr);
 
+void expression_init(RelAttr *attr, RelAttr *expr);
+
 void value_init_integer(Value *value, int v);
 void value_init_float(Value *value, float v);
 void value_init_string(Value *value, const char *v);
 int  value_init_date(Value *value, const char *v);
 void value_init_select(Value *value, Query *sub_query);
 void value_init_null(Value *value);
-void value_init_expression(Value *value, Expr *expr);
 
 void value_destroy(Value *value);
 
@@ -291,9 +309,9 @@ void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t
 void attr_info_init_no_length(AttrInfo *attr_info, const char *name, AttrType type,int nullable);
 void attr_info_destroy(AttrInfo *attr_info);
 
-void append_expression(Expr *left_expr, OP op, Expr *right_expr);
-
-void init_expression(Expr *expr, int is_attr, RelAttr *attr, Value *value);
+void append_expression(RelAttr *left_expr, OP op, RelAttr *right_expr);
+void append_brace(RelAttr *expr);
+void init_expression(RelAttr *expr, int is_attr, RelAttr *attr, Value *value);
 
 void selects_init(Selects *selects, ...);
 void selects_append_attribute(Selects *selects, RelAttr *rel_attr, const char *alias);

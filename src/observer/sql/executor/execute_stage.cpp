@@ -36,6 +36,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/order_by_operator.h"
 #include "sql/operator/join_operator.h"
 #include "sql/operator/aggregation_operator.h"
+#include "sql/operator/expression_operator.h"
 #include "sql/stmt/stmt.h"
 #include "sql/stmt/select_stmt.h"
 #include "sql/stmt/update_stmt.h"
@@ -576,9 +577,8 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   PredicateOperator *pred_oper = new PredicateOperator(new FilterStmt(filter_units));
   pred_oper->add_child(temp_oper);
 
-  Operator *oper = nullptr;
   if (select_stmt->has_aggregation()) {
-    oper = new AggregationOperator(
+    temp_oper = new AggregationOperator(
         select_stmt->query_fields(),
         select_stmt->aggregation_fields(),
         select_stmt->hidden_aggregation_fields(),
@@ -590,9 +590,18 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     for (const auto *field : select_stmt->query_fields()) {
       project_oper->add_projection(field);
     }
-    oper = project_oper;
+    temp_oper = project_oper;
   }
-  oper->add_child(pred_oper);
+  temp_oper->add_child(pred_oper);
+
+  Operator *oper = temp_oper;
+  auto query_fields = select_stmt->query_fields();
+  if (select_stmt->has_expression()) {
+    query_fields = select_stmt->expr_query_fields();
+    ExprOperator *expr_oper = new ExprOperator(select_stmt->exprs(), select_stmt->expr_query_fields());
+    expr_oper->add_child(temp_oper);
+    oper = expr_oper;
+  }
 
   rc = oper->open();
   if (rc != RC::SUCCESS && rc!=RC::RECORD_EOF) {
@@ -602,7 +611,7 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   }
 
   std::stringstream ss;
-  print_tuple_header(ss, select_stmt->query_fields(), tables.size() > 1);
+  print_tuple_header(ss, query_fields, tables.size() > 1);
   while (rc != RC::RECORD_EOF&&((rc = oper->next()) == RC::SUCCESS|| rc ==RC::SSSUCESS)) {
     // get current record
     // write to response

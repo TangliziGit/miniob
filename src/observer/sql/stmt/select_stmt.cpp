@@ -19,6 +19,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/common/db.h"
 #include "storage/common/table.h"
 #include "sql/function/register.h"
+#include "sql/expr/expression.h"
 
 SelectStmt::~SelectStmt()
 {
@@ -37,12 +38,14 @@ static void wildcard_fields(Table *table, const char *table_alias, std::vector<F
   }
 }
 
-static void wildcard_fields(Table *table, const char *table_alias, std::vector<AbstractField *> &field_metas)
+static void wildcard_fields(Table *table, const char *table_alias, std::vector<AbstractField *> &field_metas, std::vector<AbstractField *> &express_query_fields)
 {
   const TableMeta &table_meta = table->table_meta();
   const int field_num = table_meta.field_num();
   for (int i = table_meta.sys_field_num(); i < field_num; i++) {
-    field_metas.push_back(new Field(table, table_meta.field(i), table_alias, nullptr));
+    Field *field = new Field(table, table_meta.field(i), table_alias, nullptr);
+    field_metas.push_back(field);
+    express_query_fields.push_back(field);
   }
 }
 
@@ -52,7 +55,22 @@ bool same_field_exists(const std::vector<FunctionField *> &fields, AbstractField
   }
   return false;
 }
-
+std::pair<std::vector<FunctionAttr*>,RC> extra_all_funcs(Expr *expr){
+  std::vector<FunctionAttr *> funcs;
+  if(expr->is_attr&&expr->attr->function!= nullptr){
+    funcs.push_back(expr->attr->function);
+  }
+  for (int i = 0; i < expr->expr_num;i++){
+    auto res = extra_all_funcs(expr->expr[i]);
+    if(res.second!= RC::SUCCESS){
+      return {{}, res.second};
+    }
+    for(auto func:res.first){
+      funcs.push_back(func);
+    }
+  }
+  return {funcs, RC::SUCCESS};
+}
 RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unordered_map<std::string, Table *>& out_table_map)
 {
   if (nullptr == db) {
@@ -94,14 +112,44 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
 
   // collect query fields in `select` statement
   bool has_aggregation = false;
-  std::vector<AbstractField *> query_fields;
+  std::vector<AbstractField*> query_fields;
+  std::vector<AbstractField *> express_query_fields;
   std::vector<FunctionField *> agg_fields;
   std::vector<Field *> order_by_fields;
   std::vector<OrderFlag> order_flag;
+  std::vector<Expression *>exprs;
   for (int i = select_sql.attr_num - 1; i >= 0; i--) {
     const RelAttr &relation_attr = select_sql.attributes[i];
     const auto &alias = select_sql.attribute_aliases[i];
+    
+    if(relation_attr.expr!= nullptr){
+      /* 取出所有用到的agg函数 */
+      auto funcs = extra_all_funcs((Expr *)relation_attr.expr);
+      if(funcs.second!= RC::SUCCESS){
+        return funcs.second;
+      }
+      for (auto func : funcs.first) {
+        auto result = FunctionField::make(tables[0], table_map, func, alias);
+        if (result.second != RC::SUCCESS) {
+          return result.second;
+        }
+        query_fields.push_back(result.first);
 
+        bool is_agg = FunctionRegister::is_aggregation(func->function_name);
+        has_aggregation |= is_agg;
+        if (is_agg) {
+          agg_fields.push_back(result.first);
+        }
+      }
+
+      auto res = FilterStmt::create_math_expr((Expr *)relation_attr.expr, db, tables[0], &table_map);
+      if(res.second!= RC::SUCCESS){
+        return res.second;
+      }
+      exprs.push_back(res.first);
+      express_query_fields.push_back(new MathField(exprs.size() - 1, relation_attr.expr->name));
+      continue;
+    }
     // set function field
     if (relation_attr.function != nullptr) {
       auto result = FunctionField::make(tables[0], table_map, relation_attr.function, alias);
@@ -109,7 +157,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
         return result.second;
       }
       query_fields.push_back(result.first);
-
+      express_query_fields.push_back(result.first);
       bool is_agg = FunctionRegister::is_aggregation(relation_attr.function->function_name);
       has_aggregation |= is_agg;
       if (is_agg) {
@@ -125,7 +173,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
       }
 
       for (Table *table : tables) {
-        wildcard_fields(table, table_aliases[table], query_fields);
+        wildcard_fields(table, table_aliases[table], query_fields,express_query_fields);
       }
       continue;
     }
@@ -141,7 +189,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
           return RC::SCHEMA_FIELD_MISSING;
         }
         for (Table *table : tables) {
-          wildcard_fields(table, table_aliases[table], query_fields);
+          wildcard_fields(table, table_aliases[table], query_fields,express_query_fields);
         }
       } else {
         auto iter = table_map.find(table_name);
@@ -156,15 +204,16 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
             return RC::GENERIC_ERROR;
           }
 
-          wildcard_fields(table, table_aliases[table], query_fields);
+          wildcard_fields(table, table_aliases[table], query_fields,express_query_fields);
         } else {
           const FieldMeta *field_meta = table->table_meta().field(field_name);
           if (nullptr == field_meta) {
             LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
             return RC::SCHEMA_FIELD_MISSING;
           }
-
-        query_fields.push_back(new Field(table, field_meta, table_aliases[table], alias));
+          Field *field = new Field(table, field_meta, table_aliases[table], alias);
+          query_fields.push_back(field);
+          express_query_fields.push_back(field);
         }
       }
       continue;
@@ -324,6 +373,10 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
 
   // everything alright
   SelectStmt *select_stmt = new SelectStmt();
+  if(exprs.size()>0){
+    select_stmt->express_query_fields_.swap(express_query_fields);
+    select_stmt->exprs_.swap(exprs);
+  }
   select_stmt->contain_other_field_ = contain_other_field;
   select_stmt->tables_.swap(tables);
   select_stmt->query_fields_.swap(query_fields);

@@ -212,9 +212,10 @@ public:
   }
 
 public:
+  static std::pair<Expression *, RC> create_math_expr(
+      Expr *expr, Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables);
   static RC create(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
-			const Condition *conditions, int condition_num,
-			FilterStmt *&stmt);
+      const Condition *conditions, int condition_num, FilterStmt *&stmt);
 
   static RC create_filter_unit(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
 			       const Condition &condition, FilterUnit *&filter_unit);

@@ -24,9 +24,8 @@ class FieldMeta;
 class FilterStmt;
 class Db;
 class Table;
-
-class SelectStmt : public Stmt
-{
+class Expression;
+class SelectStmt : public Stmt {
 public:
 
   SelectStmt() = default;
@@ -39,6 +38,10 @@ public:
 public:
   const std::vector<Table *> &tables() const { return tables_; }
   const std::vector<AbstractField *> &query_fields() const { return query_fields_; }
+  const std::vector<AbstractField *> &expr_query_fields() const {
+    return express_query_fields_;
+  }
+  const std::vector<Expression *> &exprs() const { return exprs_; }
   const std::vector<Field *> &group_by_fields() const { return group_by_fields_; }
   FilterStmt *filter_stmt() const { return filter_stmt_; }
   FilterStmt *having_filter_stmt() const { return having_filter_stmt_; }
@@ -50,18 +53,22 @@ public:
   bool contain_other_field(){
     return contain_other_field_;
   }
+  bool has_expression(){
+    return exprs_.size() != 0;
+  }
 
 private:
   bool contain_other_field_;
+  std::vector<AbstractField *> express_query_fields_;
   std::vector<AbstractField *> query_fields_;
   std::vector<Table *> tables_;
   FilterStmt *filter_stmt_ = nullptr;
   std::vector<Field *> order_fields_;
   std::vector<OrderFlag> order_flag_;
+  std::vector<Expression *>exprs_;
   FilterStmt *having_filter_stmt_ = nullptr;
   bool has_aggregation_ = false;
   std::vector<FunctionField *> aggregation_fields_;
   std::vector<FunctionField *> hidden_aggregation_fields_;
   std::vector<Field *> group_by_fields_;
 };
-

@@ -72,6 +72,11 @@ void function_destroy(FunctionAttr *function) {
   }
 }
 
+void expresion_destroy(Expr *expr) {
+  if (expr == nullptr) return;
+
+}
+
 void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const char *attribute_name)
 {
   if (relation_name != nullptr) {
@@ -90,10 +95,12 @@ void relation_attr_destroy(RelAttr *relation_attr)
   }
   free(relation_attr->attribute_name);
   function_destroy(relation_attr->function);
+  expresion_destroy(relation_attr->expr);
   free(relation_attr->function);
   relation_attr->relation_name = nullptr;
   relation_attr->attribute_name = nullptr;
   relation_attr->function = nullptr;
+  relation_attr->expr = nullptr;
 }
 
 void value_init_integer(Value *value, int v)
@@ -140,10 +147,8 @@ void value_init_null(Value* value) {
   value->type = NULLS;
 }
 
-void value_init_expression(Value* value,Expr*expr) {
-  value->is_expr = 1;
-  value->data = malloc(sizeof(Expr));
-  memcpy(value->data, expr, sizeof(Expr));
+void expression_init(RelAttr *attr, RelAttr *expr_attr){
+  attr->expr = expr_attr->expr;
 }
 
 void value_destroy(Value *value)
@@ -152,14 +157,9 @@ void value_destroy(Value *value)
   if(value->data!=nullptr){
     if(value->is_query){
       query_destroy((Query *)value->data);
-    } else if(value->is_expr){
-      free(value->data);
-      /* todo(yin) free the left expr */
-      // expr_destroy(value->data)
     }else free(value->data);
   }
   value->is_query = 0;
-  value->is_expr = 0;
   value->data = nullptr;
 }
 
@@ -245,19 +245,65 @@ void attr_info_destroy(AttrInfo *attr_info)
   attr_info->name = nullptr;
 }
 
-void append_expression(Expr*left_expr,OP op,Expr*right_expr){
+void append_expression(RelAttr*left_attr,OP op,RelAttr*right_attr){
+  static char op_name[4][2] = {"+", "-", "*", "/"};
+  Expr *left_expr = left_attr->expr;
+  Expr *right_expr = right_attr->expr;
   left_expr->op[left_expr->expr_num] = op;
-  Expr *expr = (Expr*)malloc(sizeof(Expr));
-  memcpy(expr, right_expr, sizeof(Expr));
-  left_expr->expr[left_expr->expr_num++] = expr;
+  left_expr->expr[left_expr->expr_num++] = right_expr;
+  strcat(left_expr->name, op_name[(int)op]);
+  strcat(left_expr->name, right_expr->name);
+  right_attr->expr = nullptr;
 }
 
-void init_expression(Expr*expr,int is_attr,RelAttr*attr,Value *value){
+void append_brace(RelAttr *attr){
+  Expr *expr = attr->expr;
+  char tmp[40] = {0};
+  strcat(tmp, "(");
+  strcat(tmp, expr->name);
+  strcat(tmp, ")");
+  strcpy(expr->name, tmp);
+}
+
+void init_expression(RelAttr*init_attr,int is_attr,RelAttr*attr,Value *value){
+  init_attr->expr = (Expr *)(malloc(sizeof(Expr)));
+  Expr *expr = init_attr->expr;
+  expr->name[0] = 0;
   expr->is_attr = is_attr;
   if(expr->is_attr){
-    expr->attr = *attr;
+    const char *rel_name;
+    const char *attr_name;
+    if (attr->function != nullptr) {
+      strcat(expr->name, attr->function->function_name);
+      strcat(expr->name, "(");
+      rel_name = attr->function->parameters[0].attribute->relation_name;
+      attr_name = attr->function->parameters[0].attribute->attribute_name;
+      if (rel_name != nullptr) {
+        strcat(expr->name, rel_name);
+        strcat(expr->name, ".");
+      }
+      strcat(expr->name, attr_name);
+      strcat(expr->name, ")");
+    }else{
+      rel_name = attr->relation_name;
+      attr_name = attr->attribute_name;
+      if (rel_name != nullptr) {
+        strcat(expr->name, rel_name);
+        strcat(expr->name, ".");
+      }
+      strcat(expr->name, attr_name);
+    }
+    expr->attr = new Expr::Attr{
+        .relation_name = attr->relation_name,
+        .attribute_name = attr->attribute_name,
+        .function = attr->function,
+    };
   }else{
-    expr->value = *value;
+    /* todo,如果需要的话,请加上name */
+    expr->value = new Expr::Val{
+        .type = value->type,
+        .data = value->data,
+    };
   }
 }
 

@@ -29,6 +29,7 @@ enum class FieldType {
   FIELD,
   VALUE_FIELD,
   FUNCTION_FIELD,
+  MATH_FIELD,
 };
 
 class AbstractField {
@@ -184,4 +185,20 @@ private:
   const char *name_;
   const char *function_name_;
   const char *alias_;
+};
+
+class MathField : public AbstractField {
+public:
+  MathField(int expr_index,const char *name)
+      : expr_index_(expr_index), name_(name) {}
+
+  FieldType type() const override     { return FieldType::MATH_FIELD; }
+  const char *name() const override   { return name_;}
+  int expr_index()const{
+    return expr_index_;
+  }
+
+private:
+  int expr_index_;
+  const char *name_;
 };

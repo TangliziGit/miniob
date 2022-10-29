@@ -25,7 +25,7 @@ public:
 
   virtual ~ProjectOperator() = default;
 
-  RC add_projection(const AbstractField *field);
+  virtual RC add_projection(const AbstractField *field);
 
   RC open() override;
   RC next() override;
@@ -39,6 +39,6 @@ public:
   RC tuple_cell_spec_at(int index, const TupleCellSpec *&spec) const;
 
   Tuple * current_tuple() override;
-private:
+protected:
   ProjectTuple tuple_;
 };

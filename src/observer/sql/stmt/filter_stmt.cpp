@@ -114,25 +114,42 @@ std::pair<Expression *, RC> create_function_expr(
   return { new FunctionExpr(func_field->fields(), func), SUCCESS };
 }
 
-std::pair<Expression*,RC> create_math_expr(Expr*expr,Db*db,Table*default_table,std::unordered_map<std::string, Table *> *tables){
+std::pair<Expression*,RC> FilterStmt::create_math_expr(Expr*expr,Db*db,Table*default_table,std::unordered_map<std::string, Table *> *tables){
   std::vector<Expression *> sub_expr;
   std::vector<OP> ops;
   RC rc = RC::SUCCESS;
   if (expr->is_attr) {
-    Table *table = nullptr;
-    const FieldMeta *field = nullptr;
-    rc = get_table_and_field(db, default_table, tables, expr->attr, table, field);
-    if (rc != RC::SUCCESS) {
-      return {nullptr, rc};
+    if(expr->attr->function!=nullptr){
+      auto res = create_function_expr(expr->attr->function, default_table, *tables);
+      if(res.second!= RC::SUCCESS){
+        return {nullptr, res.second};
+      }
+      if(expr->expr_num==0){
+        return res;
+      }
+      sub_expr.push_back(res.first);
+    } else {
+      Table *table = nullptr;
+      const FieldMeta *field = nullptr;
+      RelAttr rel_attr;
+      rel_attr.attribute_name = expr->attr->attribute_name;
+      rel_attr.relation_name = expr->attr->relation_name;
+      rc = get_table_and_field(db, default_table, tables, rel_attr, table, field);
+      if (rc != RC::SUCCESS) {
+        return {nullptr, rc};
+      }
+      FieldExpr *field_expr = new FieldExpr(table, field);
+      if (expr->expr_num == 0) {
+        return {field_expr, rc};
+      }
+      sub_expr.push_back(field_expr);
     }
-    FieldExpr *field_expr = new FieldExpr(table, field);
-    if (expr->expr_num == 0) {
-      return {field_expr, rc};
-    }
-    sub_expr.push_back(field_expr);
   }else{
-    ValueExpr *value_expr = new ValueExpr(expr->value);
-    if(expr->expr_num==0){
+    Value val;
+    val.data = expr->value->data;
+    val.type = expr->value->type;
+    ValueExpr *value_expr = new ValueExpr(val);
+    if (expr->expr_num == 0) {
       return {value_expr, rc};
     }
     sub_expr.push_back(value_expr);
@@ -169,7 +186,13 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       }
 
       left = result.first;
-    } else {
+    } else if(condition.left_attr.expr!= nullptr){
+      auto res = create_math_expr(condition.left_attr.expr, db, default_table, tables);
+      if(res.second!= RC::SUCCESS){
+        return rc;
+      }
+      left = res.first;
+    }else {
       Table *table = nullptr;
       const FieldMeta *field = nullptr;
       rc = get_table_and_field(db, default_table, tables, condition.left_attr, table, field);
@@ -191,13 +214,6 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
         return RC::SCHEMA_FIELD_TYPE_MISMATCH;
       }
       left = new SubSelectExpr(select_stmt);
-    } else if(condition.left_value.is_expr){
-      Expr *expr = (Expr *)(condition.left_value.data);
-      auto res = create_math_expr(expr, db, default_table, tables);
-      if(res.second!= RC::SUCCESS){
-        return rc;
-      }
-      left = res.first;
     } else {
       left = new ValueExpr(condition.left_value);
     }
@@ -211,6 +227,12 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       }
 
       right = result.first;
+    }else if(condition.right_attr.expr!= nullptr){
+      auto res = create_math_expr(condition.right_attr.expr, db, default_table, tables);
+      if(res.second!= RC::SUCCESS){
+        return rc;
+      }
+      right = res.first;
     } else {
       Table *table = nullptr;
       const FieldMeta *field = nullptr;
@@ -234,13 +256,6 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
         return RC::SCHEMA_FIELD_TYPE_MISMATCH;
       }
       right = new SubSelectExpr(select_stmt);
-    }else if(condition.right_value[0].is_expr){
-      Expr *expr = (Expr *)(condition.right_value[0].data);
-      auto res = create_math_expr(expr, db, default_table, tables);
-      if(res.second!= RC::SUCCESS){
-        return rc;
-      }
-      right = res.first;
     }else {
       if(condition.comp!=IN&&condition.comp!=NOT_IN){
         right = new ValueExpr(condition.right_value[0]);

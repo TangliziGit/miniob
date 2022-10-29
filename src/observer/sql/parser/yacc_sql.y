@@ -38,7 +38,7 @@ typedef struct ParserContext {
   size_t id_num;
   char id[MAX_NUM][MAX_NUM];
   size_t expr_num;
-  Expr expr[MAX_NUM];
+  RelAttr expr[MAX_NUM];
 } ParserContext;
 
 //获取子串
@@ -154,8 +154,8 @@ void yyerror(yyscan_t scanner, const char *str)
   struct _Attr *attr;
   struct _Condition *condition1;
   struct _Value *value1;
-  struct Function *function1;
-  struct _Expr* expr1;
+  struct RelAttr *function1;
+  struct RelAttr* expr1;
   char *string;
   int number;
   float floats;
@@ -667,6 +667,9 @@ select_attr:
 			relation_attr_init(&attr, $1, "*");
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $5);
     }
+	| expression attr_list{
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $1, NULL);
+	}
     ;
 
 function:
@@ -766,6 +769,9 @@ attr_list: %empty
     | COMMA function ID attr_list {
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $2, $3);
     }
+	| COMMA expression attr_list{
+		selects_append_attribute(&CONTEXT->ssql->sstr.selection, $2, NULL);
+	}
     ;
 
 rel_id:
@@ -944,18 +950,22 @@ condition:
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
     }
 	| expression comOp expression{
-		Value left_value;
-		value_init_expression(&left_value,$1);
-		Value right_value;
-		value_init_expression(&right_value,$3);
+		RelAttr left_attr;
+		expression_init(&left_attr,$1);
+		RelAttr right_attr;
+		expression_init(&right_attr,$3);
 		Condition condition;
-		condition_init(&condition, CONTEXT->comp, 0, NULL, &left_value, 0, NULL, &right_value);
+		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1,&right_attr, NULL);
 		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 	}
     ;
 
 expression:
-	 value {
+     function {
+		init_expression(&CONTEXT->expr[CONTEXT->expr_num++],1,$1,NULL);
+		$$=&CONTEXT->expr[CONTEXT->expr_num-1];
+	 }
+	 |value {
 		init_expression(&CONTEXT->expr[CONTEXT->expr_num++],0,NULL,$1);
 		$$=&CONTEXT->expr[CONTEXT->expr_num-1];
 	 }
@@ -972,29 +982,30 @@ expression:
 		$$=&CONTEXT->expr[CONTEXT->expr_num-1];
 	 }
 	 | LBRACE expression RBRACE{
+		append_brace($2);
 		$$=$2;
 	 }
 	 | expression STAR expression{
-        Expr* left_expr = $1;
-		Expr* right_expr = $3;
+        RelAttr* left_expr = $1;
+		RelAttr* right_expr = $3;
 		append_expression(left_expr,MUL,right_expr);
 		$$=left_expr;
 	 }
 	 | expression DIV_T expression{
-        Expr* left_expr = $1;
-		Expr* right_expr = $3;
+        RelAttr* left_expr = $1;
+		RelAttr* right_expr = $3;
 		append_expression(left_expr,DIV,right_expr);
 		$$=left_expr;
 	 }
 	 | expression ADD_T expression{
-        Expr* left_expr = $1;
-		Expr* right_expr = $3;
+        RelAttr* left_expr = $1;
+		RelAttr* right_expr = $3;
 		append_expression(left_expr,ADD,right_expr);
 		$$=left_expr;
 	 }
 	 | expression SUB_T expression{
-        Expr* left_expr = $1;
-		Expr* right_expr = $3;
+        RelAttr* left_expr = $1;
+		RelAttr* right_expr = $3;
 		append_expression(left_expr,SUB,right_expr);
 		$$=left_expr;
 	 }

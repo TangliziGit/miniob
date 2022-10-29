@@ -132,8 +132,8 @@ union YYSTYPE
   struct _Attr *attr;
   struct _Condition *condition1;
   struct _Value *value1;
-  struct Function *function1;
-  struct _Expr* expr1;
+  struct RelAttr *function1;
+  struct RelAttr* expr1;
   char *string;
   int number;
   float floats;
