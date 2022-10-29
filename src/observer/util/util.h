@@ -25,3 +25,5 @@ int get_int_min();
 int get_int_max();
 float get_float_min();
 float get_float_max();
+
+char *concat(const char *prefix, const char *suffix);

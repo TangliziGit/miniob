@@ -84,6 +84,10 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
     table_aliases[table] = alias;
     table_map.insert(std::pair<std::string, Table*>(table_name, table));
     if (alias != nullptr) {
+      if (table_map.find(alias) != table_map.end()) {
+        return RC::GENERIC_ERROR;
+      }
+
       table_map.insert(std::pair<std::string, Table*>(alias, table));
     }
   }
@@ -116,6 +120,10 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
 
     // set wildcard '*' field
     if (common::is_blank(relation_attr.relation_name) && 0 == strcmp(relation_attr.attribute_name, "*")) {
+      if (alias != nullptr) {
+        return RC::GENERIC_ERROR;
+      }
+
       for (Table *table : tables) {
         wildcard_fields(table, table_aliases[table], query_fields);
       }
@@ -144,6 +152,10 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
 
         Table *table = iter->second;
         if (0 == strcmp(field_name, "*")) {
+          if (alias != nullptr) {
+            return RC::GENERIC_ERROR;
+          }
+
           wildcard_fields(table, table_aliases[table], query_fields);
         } else {
           const FieldMeta *field_meta = table->table_meta().field(field_name);

@@ -1,10 +1,51 @@
 -- echo initialization
-CREATE TABLE aggregation_func(id int, num int, price float, addr char, birthday date);
+CREATE TABLE _aggregation_func(id int, num int, price float, addr char, birthday date);
 
-INSERT INTO aggregation_func VALUES (1, 18, 10.0, 'abc', '2020-01-01');
-INSERT INTO aggregation_func VALUES (2, 15, 20.0, 'abc', '2010-01-11');
-INSERT INTO aggregation_func VALUES (3, 12, 30.0, 'def', '2021-01-21');
-INSERT INTO aggregation_func VALUES (4, 15, 30.0, 'dei', '2021-01-31');
+INSERT INTO _aggregation_func VALUES (1, 18, 10.0, 'abc', '2020-01-01');
+INSERT INTO _aggregation_func VALUES (2, 15, 20.0, 'abc', '2010-01-11');
+INSERT INTO _aggregation_func VALUES (3, 12, 30.0, 'def', '2021-01-21');
+INSERT INTO _aggregation_func VALUES (4, 15, 30.0, 'dei', '2021-01-31');
 
--- echo 1. aggreggation
-SELECT min(num) as m1, max(num) as m2, avg(num) as m3 FROM aggregation_func;
+-- echo 1. aggregation
+SELECT min(num) as m1, max(num) as m2, avg(num) as m3 FROM _aggregation_func;
+
+-- echo 2. select-tables
+CREATE TABLE _Select_tables_1(id int, age int, u_name char);
+CREATE TABLE _Select_tables_2(id int, age int, u_name char);
+CREATE TABLE _Select_tables_3(id int, res int, u_name char);
+CREATE TABLE _Select_tables_4(id int, age int, u_name char);
+CREATE TABLE _Select_tables_5(id int, res int, u_name char);
+
+INSERT INTO _Select_tables_1 VALUES (1,18,'a');
+INSERT INTO _Select_tables_1 VALUES (2,15,'b');
+INSERT INTO _Select_tables_2 VALUES (1,20,'a');
+INSERT INTO _Select_tables_2 VALUES (2,21,'c');
+INSERT INTO _Select_tables_3 VALUES (1,35,'a');
+INSERT INTO _Select_tables_3 VALUES (2,37,'a');
+INSERT INTO _Select_tables_4 VALUES (1, 2, 'a');
+INSERT INTO _Select_tables_4 VALUES (1, 3, 'b');
+INSERT INTO _Select_tables_4 VALUES (2, 2, 'c');
+INSERT INTO _Select_tables_4 VALUES (2, 4, 'd');
+INSERT INTO _Select_tables_5 VALUES (1, 10, 'g');
+INSERT INTO _Select_tables_5 VALUES (1, 11, 'f');
+INSERT INTO _Select_tables_5 VALUES (2, 12, 'c');
+
+-- sort SELECT * FROM _Select_tables_1 as s1, _Select_tables_2 as s2, _Select_tables_3 as s3;
+-- sort SELECT s1.id, s2.u_name, s3.res FROM _Select_tables_1 as s1, _Select_tables_2 as s2, _Select_tables_3 as s3;
+-- sort SELECT s1.id as a, s2.u_name as b, s3.res as c FROM _Select_tables_1 as s1, _Select_tables_2 as s2, _Select_tables_3 as s3;
+-- sort SELECT * FROM _Select_tables_1 as s1, _Select_tables_2 as s2, _Select_tables_3 as s3 WHERE _Select_tables_1.u_name=_Select_tables_2.u_name AND _Select_tables_2.u_name=_Select_tables_3.u_name;
+
+-- sort SELECT * FROM _Select_tables_1 s1, _Select_tables_2 s2, _Select_tables_3 s3;
+-- sort SELECT s1.id, s2.u_name, s3.res FROM _Select_tables_1 s1, _Select_tables_2 s2, _Select_tables_3 s3;
+-- sort SELECT s1.id a, s2.u_name b, s3.res c FROM _Select_tables_1 s1, _Select_tables_2 s2, _Select_tables_3 s3;
+-- sort SELECT * FROM _Select_tables_1 s1, _Select_tables_2 s2, _Select_tables_3 s3 WHERE _Select_tables_1.u_name=_Select_tables_2.u_name AND _Select_tables_2.u_name=_Select_tables_3.u_name;
+
+-- echo 3. join empty table
+CREATE TABLE _Select_tables_6(id int, res int);
+-- sort SELECT s1.id, s6.id from _Select_tables_1 as s1, _Select_tables_6 as s6 where _Select_tables_1.id=_Select_tables_6.id;
+-- sort SELECT s1.id, s6.id from _Select_tables_1 s1, _Select_tables_6 s6 where _Select_tables_1.id=_Select_tables_6.id;
+
+-- echo 4. alias failure
+SELECT * FROM _Select_tables_1 t, _Select_tables_2 t;
+SELECT * as alias FROM _Select_tables_1 t;
+select t1.id as age from _Select_tables_1 t1 where id in (select t2.id from _Select_tables_2 t2 where age > t2.id);

@@ -237,8 +237,11 @@ void print_tuple_header(std::ostream &os, const std::vector<AbstractField *> &fi
     }
 
     if(is_multi_table && fields[i]->type() == FieldType::FIELD){
-      /* 多表查询需要带上表名 */
-      os << dynamic_cast<Field *>(fields[i])->table_alias() << ".";
+      /* 多表查询需要带上表名，但是如果当前列存在别名则只输出列名 */
+      auto field = dynamic_cast<Field *>(fields[i]);
+      if (!field->has_alias()) {
+        os << field->table_alias() << ".";
+      }
     }
     os << fields[i]->alias();
   }

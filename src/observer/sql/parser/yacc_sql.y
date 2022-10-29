@@ -477,6 +477,9 @@ join_attr:
       	| INNER JOIN ID AS ID ON and_condition condition_list{
 		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3, $5);
    	}
+      	| INNER JOIN ID ID ON and_condition condition_list{
+		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3, $4);
+   	}
 	;
 
 join_attr_list:%empty
@@ -631,6 +634,39 @@ select_attr:
     | function AS ID attr_list {
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $1, $3);
     }
+    | ID ID attr_list {
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, $1);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $2);
+    }
+    | ID DOT ID ID attr_list {
+			RelAttr attr;
+			relation_attr_init(&attr, $1, $3);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $4);
+    }
+    | function ID attr_list {
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $1, $2);
+    }
+    | STAR AS ID attr_list {
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, "*");
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $3);
+    }
+    | STAR ID attr_list {
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, "*");
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $2);
+    }
+    | ID DOT STAR ID attr_list{
+			RelAttr attr;
+			relation_attr_init(&attr, $1, "*");
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $4);
+    }
+    | ID DOT STAR AS ID attr_list{
+			RelAttr attr;
+			relation_attr_init(&attr, $1, "*");
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $5);
+    }
     ;
 
 function:
@@ -690,19 +726,45 @@ attr_list: %empty
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, $2);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, NULL);
-      }
+    }
     | COMMA ID DOT ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, $2, $4);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, NULL);
-  	  }
-	| COMMA ID DOT STAR attr_list{
+    }
+    | COMMA ID DOT STAR attr_list{
 			RelAttr attr;
 			relation_attr_init(&attr, $2, "*");
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, NULL);
-	}
+    }
     | COMMA function attr_list {
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $2, NULL);
+    }
+    | COMMA ID AS ID attr_list {
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, $2);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $4);
+    }
+    | COMMA ID DOT ID AS ID attr_list {
+			RelAttr attr;
+			relation_attr_init(&attr, $2, $4);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $6);
+    }
+    | COMMA function AS ID attr_list {
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $2, $4);
+    }
+    | COMMA ID ID attr_list {
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, $2);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $3);
+    }
+    | COMMA ID DOT ID ID attr_list {
+			RelAttr attr;
+			relation_attr_init(&attr, $2, $4);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr, $5);
+    }
+    | COMMA function ID attr_list {
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, $2, $3);
     }
     ;
 
@@ -710,10 +772,14 @@ rel_id:
     ID{
 		selects_append_relation(&CONTEXT->ssql->sstr.selection, $1, NULL);
     }
-    | ID AS ID{
+    | ID AS ID {
 		selects_append_relation(&CONTEXT->ssql->sstr.selection, $1, $3);
     }
-;
+    | ID ID {
+		selects_append_relation(&CONTEXT->ssql->sstr.selection, $1, $2);
+    }
+    ;
+
 rel_list: %empty 
     /* empty */
     | COMMA rel_id rel_list {	
@@ -861,6 +927,17 @@ condition:
 			relation_attr_init(&left_attr, $1, $3);
 			RelAttr right_attr;
 			relation_attr_init(&right_attr, $5, $7);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+    }
+    |ID comOp ID DOT ID
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $1);
+			RelAttr right_attr;
+			relation_attr_init(&right_attr, $3, $5);
 
 			Condition condition;
 			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
