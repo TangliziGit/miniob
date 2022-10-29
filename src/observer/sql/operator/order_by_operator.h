@@ -45,7 +45,7 @@ public:
       return rc;
     }
 
-    while ((rc = child->next()) == RC::SUCCESS) {
+    while ((rc = child->next()) == RC::SUCCESS||(rc==RC::SSSUCESS)) {
       Tuple * tuple = new CompositeTuple(static_cast<CompositeTuple &>(*child->current_tuple()));
      std::vector<std::pair<OrderFlag, TupleCell*>> cells;
       for (size_t i = 0; i < this->fields_.size(); i++) {

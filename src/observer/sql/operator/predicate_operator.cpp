@@ -71,6 +71,7 @@ std::pair<RC,bool> PredicateOperator::do_predicate(Tuple &tuple)
   if (filter_stmt_ == nullptr || filter_stmt_->filter_units().empty()) {
     return {RC::SUCCESS,true};
   }
+  reset();
   RC rc = RC::SUCCESS;
   for (FilterUnit *filter_unit : filter_stmt_->filter_units()) {
     if (!filter_unit->is_cool()) {
@@ -128,12 +129,16 @@ std::pair<RC,bool> PredicateOperator::do_predicate(Tuple &tuple)
         if(filter_unit->pass()){
           return {RC::SSSUCESS, true};
         }
-      }else{
+        continue;
+      }
+      if(comp==IS||comp==IS_NOT){
         if(filter_unit->fail()){
           return {RC::SUCCESS, false};
         }
+        continue;
       }
-      continue;
+      /* 不是is和not_is的null比较都false */
+      return {RC::SUCCESS, false};
     }
     if(comp == LIKE||comp == NOT_LIKE){
       bool is_like = left_cell.like(right_cell);
