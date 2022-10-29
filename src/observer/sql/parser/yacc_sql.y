@@ -968,6 +968,11 @@ condition:
 	condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 1, $3, NULL);
 	CONTEXT->conditions[CONTEXT->condition_length++] = condition;
     }
+    | function comOp function {
+	Condition condition;
+	condition_init(&condition, CONTEXT->comp, 1, $1, NULL, 1, $3, NULL);
+	CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+    }
     ;
 
 expression:
