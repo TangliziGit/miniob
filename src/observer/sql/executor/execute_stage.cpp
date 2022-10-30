@@ -835,6 +835,7 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event)
 
   if (stmt == nullptr) {
     LOG_WARN("cannot find statement");
+    session_event->set_response("FAILURE\n");
     return RC::GENERIC_ERROR;
   }
 
