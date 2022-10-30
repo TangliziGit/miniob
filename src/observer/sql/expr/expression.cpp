@@ -53,6 +53,7 @@ RC MathExpr::get_value(const Tuple &tuple, TupleCell &cell){
     }
     switch (ops_[i-1])
     {
+    case ADD_NEG:
     case ADD:{
       auto res = left_cell.add(right_cell);
       if(res.second!= RC::SUCCESS){

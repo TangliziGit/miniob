@@ -229,7 +229,10 @@ std::pair<TupleCell, RC> TupleCell::div(const TupleCell &other) const {
       if((*(int *)rhs.data_)==0){
         return {*this, DIVZERO};
       }
-      int value = *(int *)lhs.data_ / *(int *)rhs.data_;
+      int left = *(int *)lhs.data_;
+      int right = *(int *)rhs.data_;
+      lhs.attr_type_ = AttrType::FLOATS;
+      float value = (float)(left) / (float)(right);
       memcpy(lhs.data_, &value, sizeof(value));
       return { lhs, SUCCESS };
     }

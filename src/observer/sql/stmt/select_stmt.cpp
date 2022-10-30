@@ -233,7 +233,10 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt,std::unorde
       return RC::SCHEMA_FIELD_MISSING;
     }
 
-    query_fields.push_back(new Field(table, field_meta, table_aliases[table], alias));
+    Field *field = new Field(table, field_meta, table_aliases[table], alias);
+
+    query_fields.push_back(field);
+    express_query_fields.push_back(field);
   }
 
   LOG_INFO("got %d tables in from stmt and %d fields in query stmt", tables.size(), query_fields.size());

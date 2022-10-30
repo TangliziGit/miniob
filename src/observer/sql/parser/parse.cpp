@@ -16,6 +16,9 @@ See the Mulan PSL v2 for more details. */
 #include "sql/parser/parse.h"
 #include "rc.h"
 #include "common/log/log.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string>
 
 RC parse(char *st, Query *sqln);
 
@@ -108,17 +111,20 @@ void value_init_integer(Value *value, int v)
   value->type = INTS;
   value->data = malloc(sizeof(v));
   memcpy(value->data, &v, sizeof(v));
+  sprintf(value->name, "%d", v);
 }
 void value_init_float(Value *value, float v)
 {
   value->type = FLOATS;
   value->data = malloc(sizeof(v));
   memcpy(value->data, &v, sizeof(v));
+  sprintf(value->name, "%f", v);
 }
 void value_init_string(Value *value, const char *v)
 {
   value->type = CHARS;
   value->data = strdup(v);
+  sprintf(value->name, "%s", v);
 }
 bool check_date(int y,int m,int d){
    static int mon[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
@@ -145,10 +151,7 @@ void value_init_select(Value* value, Query *sub_query) {
 
 void value_init_null(Value* value) {
   value->type = NULLS;
-}
-
-void expression_init(RelAttr *attr, RelAttr *expr_attr){
-  attr->expr = expr_attr->expr;
+  sprintf(value->name, "%s", "NULL");
 }
 
 void value_destroy(Value *value)
@@ -251,47 +254,53 @@ void append_expression(RelAttr*left_attr,OP op,RelAttr*right_attr){
   Expr *right_expr = right_attr->expr;
   left_expr->op[left_expr->expr_num] = op;
   left_expr->expr[left_expr->expr_num++] = right_expr;
-  strcat(left_expr->name, op_name[(int)op]);
+  if(op!=OP::ADD_NEG){
+     strcat(left_expr->name, op_name[(int)op]);
+  }
   strcat(left_expr->name, right_expr->name);
   right_attr->expr = nullptr;
 }
 
 void append_brace(RelAttr *attr){
   Expr *expr = attr->expr;
-  char tmp[40] = {0};
-  strcat(tmp, "(");
-  strcat(tmp, expr->name);
-  strcat(tmp, ")");
-  strcpy(expr->name, tmp);
+  sprintf(expr->name, "%s", std::string("(").append(expr->name).append(")").c_str());
+}
+
+void append_neg(RelAttr *left_attr){
+  Expr *expr = left_attr->expr;
+  sprintf(expr->name, "%s", std::string("-").append(expr->name).c_str());
+  Expr *left_expr = left_attr->expr;
+  Expr *right_expr = (Expr *)malloc(sizeof(Expr));
+  right_expr->is_attr = 0;
+  Value value;
+  value_init_integer(&value, -1);
+  right_expr->value = new Expr::Val{
+      .type = value.type,
+      .data = value.data,
+  };
+  left_expr->op[left_expr->expr_num] = OP::MUL;
+  left_expr->expr[left_expr->expr_num++] = right_expr;
 }
 
 void init_expression(RelAttr*init_attr,int is_attr,RelAttr*attr,Value *value){
   init_attr->expr = (Expr *)(malloc(sizeof(Expr)));
   Expr *expr = init_attr->expr;
-  expr->name[0] = 0;
   expr->is_attr = is_attr;
+  std::string name;
   if(expr->is_attr){
-    const char *rel_name;
-    const char *attr_name;
     if (attr->function != nullptr) {
-      strcat(expr->name, attr->function->function_name);
-      strcat(expr->name, "(");
-      rel_name = attr->function->parameters[0].attribute->relation_name;
-      attr_name = attr->function->parameters[0].attribute->attribute_name;
+      name.append(attr->function->function_name).append("(");
+      const char *rel_name = attr->function->parameters[0].attribute->relation_name;
+      const char *attr_name = attr->function->parameters[0].attribute->attribute_name;
       if (rel_name != nullptr) {
-        strcat(expr->name, rel_name);
-        strcat(expr->name, ".");
+        name.append(rel_name).append(".");
       }
-      strcat(expr->name, attr_name);
-      strcat(expr->name, ")");
-    }else{
-      rel_name = attr->relation_name;
-      attr_name = attr->attribute_name;
-      if (rel_name != nullptr) {
-        strcat(expr->name, rel_name);
-        strcat(expr->name, ".");
+      name.append(attr_name).append(")");
+    } else {
+      if (attr->relation_name != nullptr) {
+        name.append(attr->relation_name).append(".");
       }
-      strcat(expr->name, attr_name);
+      name.append(attr->attribute_name);
     }
     expr->attr = new Expr::Attr{
         .relation_name = attr->relation_name,
@@ -304,7 +313,9 @@ void init_expression(RelAttr*init_attr,int is_attr,RelAttr*attr,Value *value){
         .type = value->type,
         .data = value->data,
     };
+    name.append(value->name);
   }
+  sprintf(expr->name, "%s", name.c_str());
 }
 
 void selects_init(Selects *selects, ...);

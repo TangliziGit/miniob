@@ -61,6 +61,7 @@ typedef enum {
   SUB,
   MUL,
   DIV,
+  ADD_NEG,
 } OP;
 
 typedef struct _Expr{
@@ -122,10 +123,8 @@ typedef struct _Value {
   AttrType type;  // type of value
   void *data;     // value
   int is_query;
-  /* todo(yin)如果需要考察整数参与结果的expresion就加上 */
-  // char *name;
+  char name[20];
 } Value;
-
 
 typedef struct _Condition {
   int is_or;
@@ -288,8 +287,6 @@ void function_destroy(FunctionAttr *function);
 void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const char *attribute_name);
 void relation_attr_destroy(RelAttr *relation_attr);
 
-void expression_init(RelAttr *attr, RelAttr *expr);
-
 void value_init_integer(Value *value, int v);
 void value_init_float(Value *value, float v);
 void value_init_string(Value *value, const char *v);
@@ -311,6 +308,7 @@ void attr_info_destroy(AttrInfo *attr_info);
 
 void append_expression(RelAttr *left_expr, OP op, RelAttr *right_expr);
 void append_brace(RelAttr *expr);
+void append_neg(RelAttr *expr);
 void init_expression(RelAttr *expr, int is_attr, RelAttr *attr, Value *value);
 
 void selects_init(Selects *selects, ...);

@@ -468,6 +468,8 @@ select:				/*  select 语句的语法解析树*/
 		//临时变量清零
 		CONTEXT->condition_length=0;
 		CONTEXT->value_length = 0;
+		memset(CONTEXT->expr,0,sizeof(CONTEXT->expr));
+		CONTEXT->expr_num = 0;
 	}
 	;
 
@@ -951,15 +953,6 @@ condition:
 			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
     }
-	| expression comOp expression{
-		RelAttr left_attr;
-		expression_init(&left_attr,$1);
-		RelAttr right_attr;
-		expression_init(&right_attr,$3);
-		Condition condition;
-		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1,&right_attr, NULL);
-		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
-	}
     | function comOp value {
 		Value *right_value = $3;
 
@@ -979,6 +972,32 @@ condition:
 	condition_init(&condition, CONTEXT->comp, 1, $1, NULL, 1, $3, NULL);
 	CONTEXT->conditions[CONTEXT->condition_length++] = condition;
     }
+	| value comOp expression{
+			Condition condition;
+			condition_init(&condition, CONTEXT->comp, 0, NULL, $1, 1, $3, NULL);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+	}
+	| ID comOp expression{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $1);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, $3, NULL);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+	}
+	| ID DOT ID comOp expression{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, $1, $3);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, $5, NULL);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+	}
+	| expression comOp expression{
+		Condition condition;
+		condition_init(&condition, CONTEXT->comp, 1, $1, NULL, 1,$3, NULL);
+		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+	}
     ;
 
 expression:
@@ -1007,29 +1026,33 @@ expression:
 		$$=$2;
 	 }
 	 | expression STAR expression{
-        RelAttr* left_expr = $1;
-		RelAttr* right_expr = $3;
-		append_expression(left_expr,MUL,right_expr);
-		$$=left_expr;
+		append_expression($1,MUL,$3);
+		$$=$1;
 	 }
 	 | expression DIV_T expression{
-        RelAttr* left_expr = $1;
-		RelAttr* right_expr = $3;
-		append_expression(left_expr,DIV,right_expr);
-		$$=left_expr;
+		append_expression($1,DIV,$3);
+		$$=$1;
 	 }
 	 | expression ADD_T expression{
-        RelAttr* left_expr = $1;
-		RelAttr* right_expr = $3;
-		append_expression(left_expr,ADD,right_expr);
-		$$=left_expr;
+		append_expression($1,ADD,$3);
+		$$=$1;
 	 }
 	 | expression SUB_T expression{
-        RelAttr* left_expr = $1;
-		RelAttr* right_expr = $3;
-		append_expression(left_expr,SUB,right_expr);
-		$$=left_expr;
+		append_expression($1,SUB,$3);
+		$$=$1;
 	 }
+	 | expression expression{
+		// 减数字,当作加负数
+		append_expression($1,ADD,$2);
+		$$=$1;
+	 }
+	 | SUB_T expression{
+		append_neg($2);
+		$$=$2;
+	 }
+	 ;
+
+
 
 comOp:
   	  EQ { CONTEXT->comp = EQUAL_TO; }
