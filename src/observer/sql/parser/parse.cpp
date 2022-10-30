@@ -286,6 +286,9 @@ void init_expression(RelAttr*init_attr,int is_attr,RelAttr*attr,Value *value){
   init_attr->expr = (Expr *)(malloc(sizeof(Expr)));
   Expr *expr = init_attr->expr;
   expr->is_attr = is_attr;
+  expr->expr_num = 0;
+  expr->value = nullptr;
+  expr->attr = nullptr;
   std::string name;
   if(expr->is_attr){
     if (attr->function != nullptr) {

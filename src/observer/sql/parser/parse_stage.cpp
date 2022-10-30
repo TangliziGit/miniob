@@ -137,7 +137,7 @@ RC ParseStage::handle_request(StageEvent *event)
     }else{
       sql_event->session_event()->set_response("Failed to parse sql\n");
     }
-    query_destroy(query_result);
+    // query_destroy(query_result);
     return RC::INTERNAL;
   }
 

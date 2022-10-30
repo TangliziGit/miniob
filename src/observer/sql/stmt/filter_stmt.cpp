@@ -146,6 +146,9 @@ std::pair<Expression*,RC> FilterStmt::create_math_expr(Expr*expr,Db*db,Table*def
     }
   }else{
     Value val;
+    if(expr->value==nullptr){
+      return {nullptr, RC::MISMATCH};
+    }
     val.data = expr->value->data;
     val.type = expr->value->type;
     ValueExpr *value_expr = new ValueExpr(val);
