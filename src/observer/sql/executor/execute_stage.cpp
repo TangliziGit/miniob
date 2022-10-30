@@ -417,6 +417,9 @@ static void find_filter(std::vector<FilterUnit *> &filter_units,const std::map<s
     if(left->type()==ExprType::MATH||right->type()==ExprType::MATH){
       continue;
     }
+    if(left->type()==ExprType::FUNCTION||right->type()==ExprType::FUNCTION){
+      continue;
+    }
     if (left->type() == ExprType::FIELD) {
       left_field = reinterpret_cast<FieldExpr *>(left);
     }
