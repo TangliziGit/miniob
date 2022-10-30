@@ -588,7 +588,11 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   } else {
     auto project_oper = new ProjectOperator(true);
     for (const auto *field : select_stmt->query_fields()) {
-      project_oper->add_projection(field);
+      rc = project_oper->add_projection(field);
+      if (rc != SUCCESS) {
+        session_event->set_response("FAILURE\n");
+        return rc;
+      }
     }
     pred_oper->add_child(project_oper);
   }
@@ -604,7 +608,11 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   } else {
     auto project_oper = new ProjectOperator();
     for (const auto *field : select_stmt->query_fields()) {
-      project_oper->add_projection(field);
+      rc = project_oper->add_projection(field);
+      if (rc != SUCCESS) {
+        session_event->set_response("FAILURE\n");
+        return rc;
+      }
     }
     temp_oper = project_oper;
   }
