@@ -125,7 +125,6 @@ void value_init_string(Value *value, const char *v)
 {
   value->type = CHARS;
   value->data = strdup(v);
-  sprintf(value->name, "%s", v);
 }
 bool check_date(int y,int m,int d){
    static int mon[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
