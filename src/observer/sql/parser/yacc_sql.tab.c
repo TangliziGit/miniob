@@ -3317,7 +3317,7 @@ yyreduce:
 #line 1068 "yacc_sql.y"
                                 {
 		// 减数字,当作加负数
-		append_expression((yyvsp[-1].expr1),ADD,(yyvsp[0].expr1));
+		append_expression((yyvsp[-1].expr1),ADD_NEG,(yyvsp[0].expr1));
 		(yyval.expr1)=(yyvsp[-1].expr1);
 	 }
 #line 3324 "yacc_sql.tab.c"

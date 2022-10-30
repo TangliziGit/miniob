@@ -1067,7 +1067,7 @@ expression:
 	 }
 	 | expression expression{
 		// 减数字,当作加负数
-		append_expression($1,ADD,$2);
+		append_expression($1,ADD_NEG,$2);
 		$$=$1;
 	 }
 	 | SUB_T expression{
