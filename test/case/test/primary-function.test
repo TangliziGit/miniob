@@ -25,4 +25,4 @@ select date_format(d,'%Y-%y-%M-%m-%D-%d') from function;
 
 -- echo 4. general
 select id, length(c), round(f), date_format(d, '%D,%M,%Y') as date_type from function where id <> 4;
-select id, length(c), round(f), date_format(d, '%D-%M-%Y') as date_type from function where id <> 4;
+select id, date_format(u_date, '%z/%n/%d') as date_type from function_table where length(name) < 6;

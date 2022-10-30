@@ -80,6 +80,7 @@ protected:
     replace(result, "%m", m);
     replace(result, "%D", D);
     replace(result, "%d", d);
+    replace(result, "%", "");
 
     char *newDate = strdup(result.c_str());
     return TupleCell{ TEXTS, newDate };
