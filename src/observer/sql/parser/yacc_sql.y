@@ -71,6 +71,7 @@ void yyerror(yyscan_t scanner, const char *str)
       memset(context->insert_value_length,0,sizeof(context->insert_value_length));
       context->insert_num=0;
 	  context->expr_num=0;
+	  memset(CONTEXT->expr,0,sizeof(CONTEXT->expr));
       context->id_num=0;
 	  parser_id--;
   }
@@ -468,8 +469,10 @@ select:				/*  select 语句的语法解析树*/
 		//临时变量清零
 		CONTEXT->condition_length=0;
 		CONTEXT->value_length = 0;
-		memset(CONTEXT->expr,0,sizeof(CONTEXT->expr));
 		CONTEXT->expr_num = 0;
+		memset(CONTEXT->values,sizeof(CONTEXT->values));
+		memset(CONTEXT->expr,0,sizeof(CONTEXT->expr));
+		memset(CONTEXT->condition,0,sizeof(CONTEXT->condition));
 	}
 	;
 
