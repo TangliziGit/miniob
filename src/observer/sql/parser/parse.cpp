@@ -308,7 +308,6 @@ void init_expression(RelAttr*init_attr,int is_attr,RelAttr*attr,Value *value){
         .function = attr->function,
     };
   }else{
-    /* todo,如果需要的话,请加上name */
     expr->value = new Expr::Val{
         .type = value->type,
         .data = value->data,

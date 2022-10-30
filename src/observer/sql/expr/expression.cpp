@@ -48,7 +48,7 @@ RC MathExpr::get_value(const Tuple &tuple, TupleCell &cell){
       return rc;
     }
     if(right_cell.is_null()){
-      cell = left_cell;
+      cell = right_cell;
       return RC::SUCCESS;
     }
     switch (ops_[i-1])

@@ -76,13 +76,13 @@ typedef struct _Expr{
     void *data;
   };
 
-  char name[40];
+  char name[80];
   struct Val *value;
   struct Attr* attr;
   int is_attr;
   int expr_num;
-  struct _Expr *expr[MAX_NUM];
-  OP op[MAX_NUM];
+  struct _Expr *expr[MAX_NUM*4];
+  OP op[MAX_NUM*4];
 }Expr;
 
 //属性结构体

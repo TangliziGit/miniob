@@ -38,7 +38,7 @@ typedef struct ParserContext {
   size_t id_num;
   char id[MAX_NUM][MAX_NUM];
   size_t expr_num;
-  RelAttr expr[MAX_NUM];
+  RelAttr expr[MAX_NUM*4];
 } ParserContext;
 
 //获取子串
